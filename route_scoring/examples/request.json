@@ -1,0 +1,92 @@
+{
+  "requestId": "req-001",
+  "userContext": {
+    "walkingTolerance": "AROUND_20_MIN",
+    "stairAbility": "DIFFICULT",
+    "transferAbility": "AVAILABLE",
+    "assistiveDevice": "CANE"
+  },
+  "environment": {
+    "weatherCondition": "CLEAR",
+    "weatherLookupStatus": "SUCCESS",
+    "observedAt": "2026-08-03T10:00:00+09:00",
+    "locationBasis": "ORIGIN"
+  },
+  "candidates": [
+    {
+      "candidateId": "route-001",
+      "providerRank": 1,
+      "metrics": {
+        "totalTimeSec": 1200,
+        "totalWalkTimeSec": 600,
+        "totalWalkDistanceM": 700,
+        "transferCount": 1
+      },
+      "walkSegments": [
+        {
+          "walkSegmentId": "walk-001",
+          "role": "LAST_STOP_TO_DESTINATION",
+          "segmentScope": "EXTERNAL_WALK",
+          "distanceM": 400,
+          "durationSec": 350,
+          "pedestrianEnrichmentStatus": "SUCCESS",
+          "accessibilitySignals": {
+            "stair": { "state": "ABSENT", "count": 0 },
+            "overpass": { "state": "ABSENT", "count": 0 },
+            "underpass": { "state": "ABSENT", "count": 0 }
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "route-002",
+      "providerRank": 2,
+      "metrics": {
+        "totalTimeSec": 900,
+        "totalWalkTimeSec": 480,
+        "totalWalkDistanceM": 520,
+        "transferCount": 0
+      },
+      "walkSegments": [
+        {
+          "walkSegmentId": "walk-002",
+          "role": "LAST_STOP_TO_DESTINATION",
+          "segmentScope": "EXTERNAL_WALK",
+          "distanceM": 300,
+          "durationSec": 260,
+          "pedestrianEnrichmentStatus": "SUCCESS",
+          "accessibilitySignals": {
+            "stair": { "state": "PRESENT", "count": 2 },
+            "overpass": { "state": "ABSENT", "count": 0 },
+            "underpass": { "state": "PRESENT", "count": 1 }
+          }
+        }
+      ]
+    },
+    {
+      "candidateId": "route-003",
+      "providerRank": 3,
+      "metrics": {
+        "totalTimeSec": 1100,
+        "totalWalkTimeSec": 540,
+        "totalWalkDistanceM": 640,
+        "transferCount": 1
+      },
+      "walkSegments": [
+        {
+          "walkSegmentId": "walk-003",
+          "role": "LAST_STOP_TO_DESTINATION",
+          "segmentScope": "EXTERNAL_WALK",
+          "distanceM": 350,
+          "durationSec": 300,
+          "pedestrianEnrichmentStatus": "FAILED",
+          "accessibilitySignals": {
+            "stair": { "state": "UNKNOWN", "count": null },
+            "overpass": { "state": "UNKNOWN", "count": null },
+            "underpass": { "state": "UNKNOWN", "count": null }
+          }
+        }
+      ]
+    }
+  ]
+}
