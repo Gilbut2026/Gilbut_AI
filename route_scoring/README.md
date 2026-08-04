@@ -8,20 +8,57 @@
 
 <br>
 
-## 빠르게 실행해보기
+## 시작하기
 
-의존성 없이 바로 돌아갑니다.
+### 환경
+
+| | |
+|:--|:--|
+| Python | 3.7 이상 (표준 라이브러리만 사용) |
+| 외부 패키지 | 없음 |
+| 개발·검증 환경 | Python 3.12 / macOS · Linux |
+
+별도 설치 없이 바로 실행됩니다.
+
+### 1. 내려받기
 
 ```bash
-python examples/run.py     # 예시 요청으로 결과 확인
-python tests/test_scoring.py   # 테스트 34개
+git clone <레포 주소>
+cd score-function
 ```
 
-<br>
+### 2. 동작 확인
 
-## 사용법
+```bash
+python tests/test_scoring.py
+```
 
-`score_routes()`에 요청 하나를 넘기면 정렬된 결과가 돌아옵니다.
+```
+34/34 passed
+```
+
+### 3. 예시 실행
+
+```bash
+python examples/run.py
+```
+
+`examples/request.json`을 읽어서 스코어링 결과를 출력합니다.
+
+```json
+{
+  "requestId": "req-001",
+  "results": [
+    { "candidateId": "route-001", "status": "SCORED", "score": -1.45, "rank": 1 },
+    { "candidateId": "route-003", "status": "SCORED", "score": -4.45, "rank": 2 },
+    { "candidateId": "route-002", "status": "SCORED", "score": -8.55, "rank": 3 }
+  ]
+}
+```
+
+> 실행은 반드시 **레포 최상위 디렉터리**(`score-function/`)에서 해야 합니다. `scoring` 패키지를 import 하기 때문입니다.
+
+### 4. 코드에서 사용하기
 
 ```python
 from scoring import score_routes
@@ -29,7 +66,9 @@ from scoring import score_routes
 result = score_routes(request)
 ```
 
-### 요청
+<br>
+
+## 요청 형식
 
 세 부분으로 구성됩니다. **사용자가 누구인지**(`userContext`), **지금 상황이 어떤지**(`environment`), **평가할 경로들**(`candidates`)입니다.
 
@@ -107,7 +146,9 @@ request = {
 
 </details>
 
-### 응답
+<br>
+
+## 응답 형식
 
 ```json
 {
@@ -148,7 +189,7 @@ request = {
 
 - **`status`** — `SCORED`는 점수가 매겨진 경로, `FILTERED`는 통행이 불가능해 제외된 경로입니다. 제외된 경로는 `score`와 `rank`가 `null`이고 사유가 `filterCodes`에 담깁니다.
 - **`rank`** — 1이 가장 편한 경로입니다. `results` 배열도 이 순서로 정렬되어 있습니다.
-- **`score`** — 0에 가까울수록 편한 경로입니다. 음수이므로 `-1.45`가 `-9.45`보다 좋습니다.
+- **`score`** — 0에 가까울수록 편한 경로입니다. 음수이므로 `-1.45`가 `-8.55`보다 좋습니다.
 - **`scoreBreakdown`** — 어떤 항목에서 얼마나 감점됐는지입니다. "계단이 없어서 추천했어요" 같은 안내 문구를 만들 때 쓸 수 있습니다.
 - **`drtDecision`** — 똑버스나 콜택시를 안내할지 판단한 결과입니다.
 
@@ -176,9 +217,9 @@ request = {
 
 </details>
 
-### 오류
+**오류**
 
-입력이 유효하지 않으면 결과 대신 오류를 반환합니다.
+입력이 유효하지 않으면 결과 대신 오류를 반환합니다. 필수 값이 없는 후보를 0으로 계산하면 오히려 가장 편한 경로로 1위가 되기 때문에, 계산 전에 검증합니다.
 
 ```json
 {
@@ -191,21 +232,27 @@ request = {
 }
 ```
 
-필수 값이 없는 후보를 0으로 계산하면 오히려 가장 편한 경로로 1위가 되기 때문에, 계산 전에 검증합니다.
-
 <br>
 
 ## 구조
 
 ```
-scoring/
-├── engine.py       진입점 · 검증 → 필터 → 점수 → 정렬 → DRT
-├── policy.py       가중치와 상수 · 튜닝은 여기만
-├── validation.py   입력 검증
-├── filters.py      Hard Filter
-├── score.py        점수 계산
-├── obstacles.py    계단 · 육교 · 지하보도 집계
-└── drt.py          똑버스 · 콜택시 판단
+score-function/
+├── scoring/            핵심 로직
+│   ├── engine.py       진입점 · 검증 → 필터 → 점수 → 정렬 → DRT
+│   ├── policy.py       가중치와 상수 · 튜닝은 여기만
+│   ├── validation.py   입력 검증
+│   ├── filters.py      Hard Filter
+│   ├── score.py        점수 계산
+│   ├── obstacles.py    계단 · 육교 · 지하보도 집계
+│   └── drt.py          똑버스 · 콜택시 판단
+├── tests/
+│   └── test_scoring.py
+├── examples/
+│   ├── run.py
+│   └── request.json
+└── docs/
+    └── design.md       설계 배경과 판단 근거
 ```
 
 <br>
