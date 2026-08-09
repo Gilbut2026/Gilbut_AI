@@ -1,6 +1,7 @@
 """스코어링 정책 상수.
 
 가중치 튜닝은 이 파일만 수정하면 된다.
+외부 입력 enum은 Backend 온보딩 계약을 그대로 사용한다.
 """
 
 SCORING_VERSION = "accessibility-score-v1"
@@ -20,7 +21,7 @@ SCORED = "SCORED"
 FILTERED = "FILTERED"
 
 # --- 필터 사유 ---
-STAIR_UNAVAILABLE_WITH_EXTERNAL_STAIR = "STAIR_UNAVAILABLE_WITH_EXTERNAL_STAIR"
+STAIR_DIFFICULT_WITH_EXTERNAL_STAIR = "STAIR_DIFFICULT_WITH_EXTERNAL_STAIR"
 WHEELCHAIR_WITH_EXTERNAL_STAIR = "WHEELCHAIR_WITH_EXTERNAL_STAIR"
 WALK_TIME_EXCEEDED = "WALK_TIME_EXCEEDED"
 
@@ -38,23 +39,28 @@ OBSTACLE_KINDS = ("stair", "overpass", "underpass")
 # 가중치 (임의값 — 실제 경로 데이터로 검증 후 조정 예정)
 # ---------------------------------------------------------------------------
 
+# Backend 온보딩: 보행 불가 / 10분 이내 / 20분 / 30분 이상
+# UNABLE_TO_WALK은 Hard Filter에서 처리하므로 실제 점수 계산에는 사용되지 않는다.
 WALK_WEIGHT = {
-    "WITHIN_10_MIN": 2.5,
-    "AROUND_20_MIN": 1.5,
-    "OVER_30_MIN": 1.0,
+    "UNABLE_TO_WALK": 2.5,
+    "WITHIN_10_MINUTES": 2.5,
+    "WITHIN_20_MINUTES": 1.5,
+    "OVER_30_MINUTES": 1.0,
 }
 
-# UNAVAILABLE은 Hard Filter에서 처리하므로 여기 없음
+# DIFFICULT은 Hard Filter에서 처리하므로 여기 없음.
+# SLIGHTLY_DIFFICULT은 계단 경로를 허용하되 강하게 감점한다.
 STAIR_WEIGHT = {
     "AVAILABLE": 0.1,
-    "DIFFICULT": 2.0,
+    "SLIGHTLY_DIFFICULT": 2.0,
 }
 
-# UNAVAILABLE도 필터가 아닌 강한 감점으로 처리 — 후보가 전부 사라지는 것을 방지
+# Backend 온보딩의 선호 의미를 그대로 사용한다.
+# AVOID_PREFERRED도 Hard Filter가 아닌 강한 감점으로 처리해 후보 소실을 방지한다.
 TRANSFER_WEIGHT = {
     "AVAILABLE": 1.0,
-    "DIFFICULT": 2.0,
-    "UNAVAILABLE": 5.0,
+    "FEWER_PREFERRED": 2.0,
+    "AVOID_PREFERRED": 5.0,
 }
 
 WEATHER_PENALTY = {
@@ -74,11 +80,12 @@ SEVERE_WEATHER = frozenset({"HEAVY_RAIN", "HEAVY_SNOW", "SEVERE_HEAT", "SEVERE_C
 # 보조기구 사용 시 장애물 페널티 증폭
 AID_MULTIPLIER = 1.5
 
-# 온보딩 보행 가능 시간(분). None은 상한 없음
+# Backend 온보딩 보행 가능 시간(분). None은 상한 없음.
 WALK_TOLERANCE_MINUTES = {
-    "WITHIN_10_MIN": 10,
-    "AROUND_20_MIN": 20,
-    "OVER_30_MIN": None,
+    "UNABLE_TO_WALK": 0,
+    "WITHIN_10_MINUTES": 10,
+    "WITHIN_20_MINUTES": 20,
+    "OVER_30_MINUTES": None,
 }
 
 # 보행 가능 시간의 N배를 초과하면 Hard Filter로 제외
