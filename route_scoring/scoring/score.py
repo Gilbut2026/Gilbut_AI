@@ -6,7 +6,7 @@
 항목별 페널티를 함께 반환하여, 왜 이 순위인지 설명할 수 있게 한다.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from . import policy
 
