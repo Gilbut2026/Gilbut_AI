@@ -1,20 +1,21 @@
 {
   "requestId": "req-001",
   "userContext": {
-    "walkingTolerance": "AROUND_20_MIN",
-    "stairAbility": "DIFFICULT",
-    "transferAbility": "AVAILABLE",
-    "assistiveDevice": "CANE"
+    "walkingDuration": "WITHIN_20_MINUTES",
+    "stairLevel": "SLIGHTLY_DIFFICULT",
+    "restStopPreference": "REQUIRED",
+    "transferLevel": "AVAILABLE",
+    "mobilityAid": "CANE_OR_WALKER"
   },
   "environment": {
     "weatherCondition": "CLEAR",
-    "weatherLookupStatus": "SUCCESS",
-    "observedAt": "2026-08-03T10:00:00+09:00",
-    "locationBasis": "ORIGIN"
+    "weatherLookupStatus": "SUCCESS"
   },
   "candidates": [
     {
-      "candidateId": "route-001",
+      "routeId": "route-001",
+      "routeType": "TRANSIT",
+      "routeOption": null,
       "providerRank": 1,
       "metrics": {
         "totalTimeSec": 1200,
@@ -39,7 +40,9 @@
       ]
     },
     {
-      "candidateId": "route-002",
+      "routeId": "route-002",
+      "routeType": "TRANSIT",
+      "routeOption": null,
       "providerRank": 2,
       "metrics": {
         "totalTimeSec": 900,
@@ -64,7 +67,9 @@
       ]
     },
     {
-      "candidateId": "route-003",
+      "routeId": "route-003",
+      "routeType": "TRANSIT",
+      "routeOption": null,
       "providerRank": 3,
       "metrics": {
         "totalTimeSec": 1100,
