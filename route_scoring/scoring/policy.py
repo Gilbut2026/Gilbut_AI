@@ -1,7 +1,6 @@
 """스코어링 정책 상수.
 
 가중치 튜닝은 이 파일만 수정하면 된다.
-외부 입력 enum은 Backend 온보딩 계약을 그대로 사용한다.
 """
 
 SCORING_VERSION = "accessibility-score-v1"
@@ -39,24 +38,19 @@ OBSTACLE_KINDS = ("stair", "overpass", "underpass")
 # 가중치 (임의값 — 실제 경로 데이터로 검증 후 조정 예정)
 # ---------------------------------------------------------------------------
 
-# Backend 온보딩: 보행 불가 / 10분 이내 / 20분 / 30분 이상
-# UNABLE_TO_WALK은 Hard Filter에서 처리하므로 실제 점수 계산에는 사용되지 않는다.
 WALK_WEIGHT = {
-    "UNABLE_TO_WALK": 2.5,
     "WITHIN_10_MINUTES": 2.5,
     "WITHIN_20_MINUTES": 1.5,
     "OVER_30_MINUTES": 1.0,
 }
 
-# DIFFICULT은 Hard Filter에서 처리하므로 여기 없음.
-# SLIGHTLY_DIFFICULT은 계단 경로를 허용하되 강하게 감점한다.
+# DIFFICULT은 Hard Filter에서 처리하므로 여기 없음
 STAIR_WEIGHT = {
     "AVAILABLE": 0.1,
     "SLIGHTLY_DIFFICULT": 2.0,
 }
 
-# Backend 온보딩의 선호 의미를 그대로 사용한다.
-# AVOID_PREFERRED도 Hard Filter가 아닌 강한 감점으로 처리해 후보 소실을 방지한다.
+# AVOID_PREFERRED도 필터가 아닌 강한 감점으로 처리 — 후보가 전부 사라지는 것을 방지
 TRANSFER_WEIGHT = {
     "AVAILABLE": 1.0,
     "FEWER_PREFERRED": 2.0,
@@ -80,7 +74,7 @@ SEVERE_WEATHER = frozenset({"HEAVY_RAIN", "HEAVY_SNOW", "SEVERE_HEAT", "SEVERE_C
 # 보조기구 사용 시 장애물 페널티 증폭
 AID_MULTIPLIER = 1.5
 
-# Backend 온보딩 보행 가능 시간(분). None은 상한 없음.
+# 온보딩 보행 가능 시간(분). None은 상한 없음
 WALK_TOLERANCE_MINUTES = {
     "UNABLE_TO_WALK": 0,
     "WITHIN_10_MINUTES": 10,
