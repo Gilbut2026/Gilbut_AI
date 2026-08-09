@@ -25,46 +25,46 @@ def validate(request):
         if not isinstance(candidate, dict):
             return f"candidate must be an object at index {index}"
 
-        candidate_id = candidate.get("candidateId")
+        route_id = candidate.get("routeId")
 
-        if not candidate_id or not isinstance(candidate_id, str):
-            return f"candidateId is required at index {index}"
+        if not route_id or not isinstance(route_id, str):
+            return f"routeId is required at index {index}"
 
-        if candidate_id in seen:
-            return f"duplicate candidateId: {candidate_id}"
+        if route_id in seen:
+            return f"duplicate routeId: {route_id}"
 
-        seen.add(candidate_id)
+        seen.add(route_id)
 
-        error = _validate_metrics(candidate, candidate_id)
+        error = _validate_metrics(candidate, route_id)
         if error:
             return error
 
     return None
 
 
-def _validate_metrics(candidate, candidate_id):
+def _validate_metrics(candidate, route_id):
     metrics = candidate.get("metrics")
 
     if not isinstance(metrics, dict):
-        return f"metrics is required: {candidate_id}"
+        return f"metrics is required: {route_id}"
 
     for field in REQUIRED_METRICS:
         if field not in metrics:
-            return f"{field} is required: {candidate_id}"
+            return f"{field} is required: {route_id}"
 
         value = metrics[field]
 
         # bool은 int의 하위 타입이라 별도로 걸러야 한다
         if isinstance(value, bool) or not isinstance(value, (int, float)):
-            return f"{field} must be a number: {candidate_id}"
+            return f"{field} must be a number: {route_id}"
 
         if not math.isfinite(value):
-            return f"{field} must be a finite number: {candidate_id}"
+            return f"{field} must be a finite number: {route_id}"
 
         if value < 0:
-            return f"{field} must not be negative: {candidate_id}"
+            return f"{field} must not be negative: {route_id}"
 
         if field in INTEGER_METRICS and not isinstance(value, int):
-            return f"{field} must be an integer: {candidate_id}"
+            return f"{field} must be an integer: {route_id}"
 
     return None
