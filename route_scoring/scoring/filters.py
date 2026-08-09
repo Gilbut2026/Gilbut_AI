@@ -1,7 +1,8 @@
 """Hard Filter — 점수를 매기기 전에 통행이 불가능한 후보를 제외한다.
 
-감점으로 처리하지 않고 제외하는 이유는, 실제로 이용하기 어려운 경로가
-다른 조건이 좋다는 이유로 상위에 노출되는 것을 막기 위해서다.
+감점으로 처리하지 않고 제외하는 이유는, 계단 이용이 어려운 사용자에게
+계단이 있는 경로는 "불편"이 아니라 "통행 불가"에 가깝기 때문이다. 감점만 하면
+다른 조건이 좋을 때 통행 불가 경로가 1순위가 될 수 있다.
 """
 
 from . import policy
@@ -15,16 +16,15 @@ def check(candidate, obstacles, user):
 def _check_stairs(obstacles, user):
     """계단으로 인한 제외 여부.
 
-    Backend 온보딩 기준:
-    - AVAILABLE: 계단 이용 가능
-    - SLIGHTLY_DIFFICULT: 계단 이용 가능하지만 불편 → 점수에서 감점
-    - DIFFICULT: 계단 이용 어려움 → 확인된 외부 계단 경로 제외
-
-    육교·지하보도는 엘리베이터나 경사로가 있을 수 있어 Hard Filter하지 않고
-    점수에서 감점한다.
+    육교·지하보도는 제외 대상이 아니다. 엘리베이터나 경사로가 있을 수 있는데
+    현재 데이터로는 구분할 수 없어, 일괄 제외하면 갈 수 있는 경로까지 잃는다.
+    대신 점수에서 감점한다.
 
     휠체어 사용자는 조회 실패(UNKNOWN)도 제외 대상이다. 계단이 있으면 물리적으로
     통행이 불가능하고 되돌릴 수 없어, 확실하지 않을 때는 안전하게 판단한다.
+
+    계단 이용 어려움 사용자(휠체어 제외)는 확인된 계단만 제외 대상이다.
+    조회 실패만으로 후보를 잃지 않도록 통과시키고, 점수에서 불리하게 처리한다.
     """
     if user.get("mobilityAid") == "WHEELCHAIR":
         if obstacles.stair > 0 or obstacles.has_unknown:
@@ -38,14 +38,12 @@ def _check_stairs(obstacles, user):
 
 
 def _check_walk_time(candidate, user):
-    """보행 가능 시간을 크게 초과하거나 보행 불가인 경우 경로를 제외한다.
+    """보행 불가이거나 보행 가능 시간을 크게 초과하는 경로 제외.
 
-    UNABLE_TO_WALK은 일반 경로 후보를 모두 제외해 이후 DRT/콜택시 판단으로
-    넘긴다. 나머지는 기존 정책대로 사용자가 설정한 보행 가능 시간의 2배를
-    초과할 때 제외한다.
+    정규화는 30분 초과를 모두 같은 값으로 취급하므로, 감점만으로는
+    "10분만 가능한 사용자에게 90분 경로" 같은 극단적인 경우를 걸러내지 못한다.
     """
     walking_duration = user.get("walkingDuration")
-
     if walking_duration == "UNABLE_TO_WALK":
         return [policy.WALK_TIME_EXCEEDED]
 
