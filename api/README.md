@@ -1,4 +1,4 @@
-# FastAPI Route Scoring Server
+# FastAPI AI Server
 
 `Gilbut_AI`의 Backend 연동용 HTTP 서버 계층입니다.
 
