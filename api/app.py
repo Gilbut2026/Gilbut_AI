@@ -1,7 +1,8 @@
 """FastAPI entrypoint for Gilbut route accessibility scoring.
 
-Backend sends the shared scoring request contract. The API layer enriches the
-request with current weather and delegates scoring to ``route_scoring``.
+Backend sends user context and route candidates. The API layer queries current
+weather, creates the internal ``environment`` field, and delegates scoring to
+``route_scoring``.
 """
 
 from copy import deepcopy
@@ -34,9 +35,9 @@ def health():
 def score_route_candidates(request: Any = Body(...)):
     """Score Backend route candidates using the shared request/response contract.
 
-    FastAPI does not recreate candidates or walkSegments. It forwards the
-    Backend payload as-is, adds AI-owned weather information, and delegates the
-    policy logic to ``route_scoring.scoring.score_routes``.
+    Backend provides userContext and candidates, including walkSegments when
+    available. FastAPI adds AI-owned weather information internally before
+    delegating the policy logic to ``route_scoring.scoring.score_routes``.
     """
     if not isinstance(request, dict):
         return score_routes(request)
