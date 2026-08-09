@@ -2,7 +2,7 @@
 
 `Gilbut_AI`의 Backend 연동용 HTTP 서버 계층입니다.
 
-실제 접근성 점수 계산, Hard Filter, 장애물 집계, Ranking, DRT/콜택시 판단은 `route_scoring/`이 담당하고, `api/`는 요청 수신·날씨 보강·응답 반환만 담당합니다.
+실제 접근성 점수 계산, Hard Filter, 장애물 집계, Ranking, DRT/콜택시 판단은 `route_scoring/`이 담당하고, `api/`는 요청 수신·날씨 조회·Score Function 호출·응답 반환을 담당합니다.
 
 ## 전체 구조
 
@@ -27,12 +27,13 @@ Gilbut_AI/
 Backend
    │
    │ POST /routes/score
+   │ userContext + candidates(+ walkSegments)
    ▼
 api/app.py
    │
    ├─ Backend request 수신
    ├─ 기상청 현재 날씨 조회
-   ├─ environment 보강
+   ├─ AI 내부 environment 생성
    ▼
 route_scoring.scoring.score_routes()
    │
@@ -46,7 +47,9 @@ route_scoring.scoring.score_routes()
 Backend 응답 계약 반환
 ```
 
-FastAPI는 Backend가 전달한 `candidates`나 `walkSegments`를 새로 만들거나 재가공하지 않습니다. 전달받은 경로 후보를 그대로 Score Function에 넘기고 AI가 소유하는 날씨 정보만 추가합니다.
+**`environment`는 Backend가 보내는 입력값이 아닙니다.** FastAPI가 기상청 API를 조회한 뒤 AI 내부에서 생성하여 `score_routes()`에 추가합니다.
+
+FastAPI는 Backend가 전달한 `candidates`나 `walkSegments`를 새로 만들거나 재가공하지 않습니다. 전달받은 경로 후보를 그대로 Score Function에 넘기고, 날씨 정보만 AI 내부에서 추가합니다.
 
 ## 실행
 
@@ -85,7 +88,9 @@ Backend가 생성한 경로 후보를 받아 접근성 점수와 순위를 계�
 
 후보 개수는 고정하지 않습니다. Backend가 `candidates`에 전달한 모든 route를 평가합니다.
 
-## 요청 구조
+## Backend 요청 구조
+
+Backend → FastAPI 요청에는 `environment`가 포함되지 않습니다.
 
 ```json
 {
@@ -121,8 +126,6 @@ Backend가 생성한 경로 후보를 받아 접근성 점수와 순위를 계�
   ]
 }
 ```
-
-Backend가 `environment`를 보내더라도 FastAPI에서는 AI Server가 조회한 최신 기상청 결과로 덮어씁니다.
 
 ## `walkSegments` 처리
 
@@ -183,7 +186,9 @@ obstaclePenalty
 
 ## 날씨 처리
 
-`api/app.py`는 요청마다 `route_scoring/scoring/weather_penalty.py`의 `get_weather_environment()`를 호출합니다.
+날씨는 **Backend 입력이 아니라 AI FastAPI가 담당**합니다.
+
+`api/app.py`가 요청을 받으면 `route_scoring/scoring/weather_penalty.py`의 `get_weather_environment()`를 호출하여 내부 `environment`를 생성합니다.
 
 성공:
 
@@ -210,9 +215,12 @@ obstaclePenalty
 FastAPI에는 Score 계산식을 복제하지 않습니다.
 
 ```python
+scoring_request = deepcopy(request)
 scoring_request["environment"] = get_weather_environment()
 return score_routes(scoring_request)
 ```
+
+여기서 `request`는 Backend가 보낸 요청이고, `environment`는 FastAPI가 AI 내부에서 새로 만든 값입니다.
 
 점수 정책은 `route_scoring/scoring/`에서만 관리합니다.
 
@@ -272,3 +280,5 @@ AI_SCORING_URL=http://<AI_SERVER_HOST>:8000/routes/score
 ```
 
 현재 Backend가 전달해야 하는 핵심 데이터는 사용자 온보딩 값, route별 metrics, 그리고 장애물 계산에 필요한 `walkSegments`입니다.
+
+날씨 `environment`는 Backend 전달 항목이 아니라 FastAPI 내부 생성값입니다.
