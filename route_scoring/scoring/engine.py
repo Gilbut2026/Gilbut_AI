@@ -51,7 +51,7 @@ def _partition(candidates, user):
 
         if codes:
             filtered.append({
-                "candidateId": candidate["candidateId"],
+                "routeId": candidate["routeId"],
                 "status": policy.FILTERED,
                 "score": None,
                 "rank": None,
@@ -81,7 +81,7 @@ def _rank(passed, user, weather):
 
     results = [
         {
-            "candidateId": entry["candidate"]["candidateId"],
+            "routeId": entry["candidate"]["routeId"],
             "status": policy.SCORED,
             "score": round(entry["breakdown"].total, 2),
             "rank": rank,
