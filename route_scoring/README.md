@@ -79,9 +79,9 @@ python examples/run.py
 {
   "requestId": "req-001",
   "results": [
-    { "candidateId": "route-001", "status": "SCORED", "score": -1.45, "rank": 1 },
-    { "candidateId": "route-003", "status": "SCORED", "score": -4.45, "rank": 2 },
-    { "candidateId": "route-002", "status": "SCORED", "score": -8.55, "rank": 3 }
+    { "routeId": "route-001", "status": "SCORED", "score": -1.45, "rank": 1 },
+    { "routeId": "route-003", "status": "SCORED", "score": -4.45, "rank": 2 },
+    { "routeId": "route-002", "status": "SCORED", "score": -8.55, "rank": 3 }
   ]
 }
 ```
@@ -120,10 +120,11 @@ request = {
 
     # 온보딩에서 받은 사용자 정보
     "userContext": {
-        "walkingTolerance": "AROUND_20_MIN",   # 한 번에 걸을 수 있는 시간
-        "stairAbility": "DIFFICULT",            # 계단 이용 가능 수준
-        "transferAbility": "AVAILABLE",         # 환승 가능 수준
-        "assistiveDevice": "CANE",              # 보조기구
+        "walkingDuration": "WITHIN_20_MINUTES",       # 한 번에 걸을 수 있는 시간
+        "stairLevel": "SLIGHTLY_DIFFICULT",          # 계단 이용 가능 수준
+        "restStopPreference": "REQUIRED",             # 이동 중 휴식 필요 여부
+        "transferLevel": "AVAILABLE",                 # 환승 선호 수준
+        "mobilityAid": "CANE_OR_WALKER",              # 보조기구
     },
 
     # 현재 환경
@@ -135,7 +136,7 @@ request = {
     # 평가할 경로 후보들
     "candidates": [
         {
-            "candidateId": "route-001",         # 결과와 연결할 식별자
+            "routeId": "route-001",             # 결과와 연결할 식별자
             "providerRank": 1,                  # 지도 API가 준 원래 순서
 
             "metrics": {
@@ -182,10 +183,11 @@ request = {
 
 | 필드 | 값 |
 |:--|:--|
-| `walkingTolerance` | `WITHIN_10_MIN` · `AROUND_20_MIN` · `OVER_30_MIN` |
-| `stairAbility` | `AVAILABLE` · `DIFFICULT` · `UNAVAILABLE` |
-| `transferAbility` | `AVAILABLE` · `DIFFICULT` · `UNAVAILABLE` |
-| `assistiveDevice` | `NONE` · `CANE` · `WALKER` · `WHEELCHAIR` · `OTHER` |
+| `walkingDuration` | `UNABLE_TO_WALK` · `WITHIN_10_MINUTES` · `WITHIN_20_MINUTES` · `OVER_30_MINUTES` |
+| `stairLevel` | `AVAILABLE` · `SLIGHTLY_DIFFICULT` · `DIFFICULT` |
+| `restStopPreference` | `REQUIRED` · `NO_PREFERENCE` |
+| `transferLevel` | `AVAILABLE` · `FEWER_PREFERRED` · `AVOID_PREFERRED` |
+| `mobilityAid` | `NOT_USED` · `CANE_OR_WALKER` · `WHEELCHAIR` |
 | `weatherCondition` | `CLEAR` · `RAIN` · `HEAVY_RAIN` · `SNOW` · `HEAVY_SNOW` · `HEAT` · `SEVERE_HEAT` · `COLD` · `SEVERE_COLD` |
 | `weatherLookupStatus` | `SUCCESS` · `FAILED` · `NOT_REQUESTED` |
 | `segmentScope` | `EXTERNAL_WALK` · `STATION_INTERNAL` · `UNKNOWN` |
@@ -207,7 +209,7 @@ request = {
   "scoringVersion": "accessibility-score-v1",
   "results": [
     {
-      "candidateId": "route-001",
+      "routeId": "route-001",
       "status": "SCORED",
       "score": -1.45,
       "rank": 1,
@@ -221,7 +223,7 @@ request = {
       }
     },
     {
-      "candidateId": "route-002",
+      "routeId": "route-002",
       "status": "FILTERED",
       "score": null,
       "rank": null,
@@ -233,7 +235,7 @@ request = {
     "priority": false,
     "taxiGuide": false,
     "reasonCodes": ["ASSISTIVE_DEVICE"],
-    "basedOnCandidateId": "route-001"
+    "basedOnRouteId": "route-001"
   }
 }
 ```
@@ -273,9 +275,9 @@ request = {
 
 | 코드 | 뜻 |
 |:--|:--|
-| `STAIR_UNAVAILABLE_WITH_EXTERNAL_STAIR` | 계단 이용 불가 사용자인데 경로에 계단이 있음 |
+| `STAIR_DIFFICULT_WITH_EXTERNAL_STAIR` | 계단 이용이 어려운 사용자인데 경로에 계단이 있음 |
 | `WHEELCHAIR_WITH_EXTERNAL_STAIR` | 휠체어 사용자인데 계단이 있거나 확인 불가 |
-| `WALK_TIME_EXCEEDED` | 걸을 수 있는 시간의 2배를 초과 |
+| `WALK_TIME_EXCEEDED` | 보행 불가이거나 걸을 수 있는 시간의 2배를 초과 |
 
 **`drtDecision.reasonCodes`** — DRT 판단 근거
 

@@ -43,12 +43,12 @@ def calculate(candidate, obstacles, user, weather):
     walk_time = normalize(metrics["totalWalkTimeSec"] / 60, policy.WALK_TIME_BINS)
     walk_distance = normalize(metrics["totalWalkDistanceM"], policy.WALK_DISTANCE_BINS)
 
-    walk_weight = policy.WALK_WEIGHT.get(user.get("walkingTolerance"), 1.5)
-    stair_weight = policy.STAIR_WEIGHT.get(user.get("stairAbility"), 0.1)
-    transfer_weight = policy.TRANSFER_WEIGHT.get(user.get("transferAbility"), 1.0)
+    walk_weight = policy.WALK_WEIGHT.get(user.get("walkingDuration"), 1.5)
+    stair_weight = policy.STAIR_WEIGHT.get(user.get("stairLevel"), 0.1)
+    transfer_weight = policy.TRANSFER_WEIGHT.get(user.get("transferLevel"), 1.0)
     weather_weight = policy.WEATHER_PENALTY.get(weather, 0.0)
 
-    aid = policy.AID_MULTIPLIER if user.get("assistiveDevice", "NONE") != "NONE" else 1.0
+    aid = policy.AID_MULTIPLIER if user.get("mobilityAid", "NOT_USED") != "NOT_USED" else 1.0
 
     return Breakdown(
         walk_time=walk_weight * walk_time,

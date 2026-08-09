@@ -20,7 +20,7 @@ SCORED = "SCORED"
 FILTERED = "FILTERED"
 
 # --- 필터 사유 ---
-STAIR_UNAVAILABLE_WITH_EXTERNAL_STAIR = "STAIR_UNAVAILABLE_WITH_EXTERNAL_STAIR"
+STAIR_DIFFICULT_WITH_EXTERNAL_STAIR = "STAIR_DIFFICULT_WITH_EXTERNAL_STAIR"
 WHEELCHAIR_WITH_EXTERNAL_STAIR = "WHEELCHAIR_WITH_EXTERNAL_STAIR"
 WALK_TIME_EXCEEDED = "WALK_TIME_EXCEEDED"
 
@@ -39,22 +39,22 @@ OBSTACLE_KINDS = ("stair", "overpass", "underpass")
 # ---------------------------------------------------------------------------
 
 WALK_WEIGHT = {
-    "WITHIN_10_MIN": 2.5,
-    "AROUND_20_MIN": 1.5,
-    "OVER_30_MIN": 1.0,
+    "WITHIN_10_MINUTES": 2.5,
+    "WITHIN_20_MINUTES": 1.5,
+    "OVER_30_MINUTES": 1.0,
 }
 
-# UNAVAILABLE은 Hard Filter에서 처리하므로 여기 없음
+# DIFFICULT은 Hard Filter에서 처리하므로 여기 없음
 STAIR_WEIGHT = {
     "AVAILABLE": 0.1,
-    "DIFFICULT": 2.0,
+    "SLIGHTLY_DIFFICULT": 2.0,
 }
 
-# UNAVAILABLE도 필터가 아닌 강한 감점으로 처리 — 후보가 전부 사라지는 것을 방지
+# AVOID_PREFERRED도 필터가 아닌 강한 감점으로 처리 — 후보가 전부 사라지는 것을 방지
 TRANSFER_WEIGHT = {
     "AVAILABLE": 1.0,
-    "DIFFICULT": 2.0,
-    "UNAVAILABLE": 5.0,
+    "FEWER_PREFERRED": 2.0,
+    "AVOID_PREFERRED": 5.0,
 }
 
 WEATHER_PENALTY = {
@@ -76,9 +76,10 @@ AID_MULTIPLIER = 1.5
 
 # 온보딩 보행 가능 시간(분). None은 상한 없음
 WALK_TOLERANCE_MINUTES = {
-    "WITHIN_10_MIN": 10,
-    "AROUND_20_MIN": 20,
-    "OVER_30_MIN": None,
+    "UNABLE_TO_WALK": 0,
+    "WITHIN_10_MINUTES": 10,
+    "WITHIN_20_MINUTES": 20,
+    "OVER_30_MINUTES": None,
 }
 
 # 보행 가능 시간의 N배를 초과하면 Hard Filter로 제외
