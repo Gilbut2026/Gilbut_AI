@@ -41,10 +41,9 @@ def score_route_candidates(request: Any = Body(...)):
     if not isinstance(request, dict):
         return score_routes(request)
 
-    scoring_request = deepcopy(request)
-    scoring_request["environment"] = get_weather_environment()
-
     try:
+        scoring_request = deepcopy(request)
+        scoring_request["environment"] = get_weather_environment()
         return score_routes(scoring_request)
     except Exception:
         return JSONResponse(
