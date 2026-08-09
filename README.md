@@ -24,6 +24,7 @@ uvicorn api.app:app --host 0.0.0.0 --port 8000
 - `POST /routes/score`: Backend 경로 후보 스코어링
 
 Backend에서는 `AI_SCORING_URL`을 실행 중인 AI 서버의 `/routes/score` 전체 URL로 설정하면 됩니다.
-FastAPI는 Backend 요청을 받고, AI 서버 내부에서 기상청 날씨 정보를 추가한 뒤 `route_scoring.scoring.score_routes()`를 호출합니다.
 
-FastAPI의 요청 흐름, `walkSegments` 처리, 날씨 주입, 응답 계약은 [`api/README.md`](api/README.md)를 참고하세요.
+Backend는 사용자 온보딩 정보와 경로 후보(`candidates`, `walkSegments`)를 전달합니다. 날씨 `environment`는 Backend 입력이 아니라 FastAPI가 기상청 API를 조회해 AI 내부에서 생성한 뒤 `route_scoring.scoring.score_routes()`에 추가합니다.
+
+FastAPI의 요청 흐름, `walkSegments` 처리, 날씨 조회, 응답 계약은 [`api/README.md`](api/README.md)를 참고하세요.
