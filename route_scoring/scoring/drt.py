@@ -15,10 +15,10 @@ def decide(user, weather, top_candidate, passable_count):
         priority: 똑버스를 1순위로 노출할지
         taxiGuide: 교통약자 콜택시를 안내할지
         reasonCodes: 판단 근거
-        basedOnCandidateId: 판단 기준이 된 후보
+        basedOnRouteId: 판단 기준이 된 경로
     """
-    based_on = top_candidate.get("candidateId") if top_candidate else None
-    device = user.get("assistiveDevice", "NONE")
+    based_on = top_candidate.get("routeId") if top_candidate else None
+    device = user.get("mobilityAid", "NOT_USED")
     no_route = passable_count == 0
 
     if device == "WHEELCHAIR":
@@ -31,7 +31,7 @@ def decide(user, weather, top_candidate, passable_count):
     if no_route:
         reasons.append(policy.NO_PASSABLE_ROUTE)
 
-    if device != "NONE":
+    if device != "NOT_USED":
         reasons.append(policy.ASSISTIVE_DEVICE)
 
     if top_candidate:
@@ -49,7 +49,7 @@ def decide(user, weather, top_candidate, passable_count):
         reasons.append(policy.SEVERE_WEATHER_REASON)
         priority = True
 
-    show = device != "NONE" or priority
+    show = device != "NOT_USED" or priority
     return _result(show, priority, False, reasons, based_on)
 
 
@@ -59,5 +59,5 @@ def _result(show, priority, taxi_guide, reasons, based_on):
         "priority": priority,
         "taxiGuide": taxi_guide,
         "reasonCodes": reasons,
-        "basedOnCandidateId": based_on,
+        "basedOnRouteId": based_on,
     }
