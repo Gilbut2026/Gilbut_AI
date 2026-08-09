@@ -4,6 +4,32 @@
 
 실제 접근성 점수 계산, Hard Filter, 장애물 집계, Ranking, DRT/콜택시 판단은 `route_scoring/`이 담당하고, `api/`는 요청 수신·날씨 조회·Score Function 호출·응답 반환을 담당합니다.
 
+## 현재 구현 상태
+
+### 구현 완료
+
+- [x] `GET /health` 서버 상태 확인
+- [x] `POST /routes/score` 경로 스코어링 API
+- [x] Backend의 `userContext` / `candidates` / `walkSegments` 수신
+- [x] route별 `walkSegments` 내 계단·육교·지하보도 집계
+- [x] 사용자 보행 가능 시간 반영
+- [x] 계단 이용 수준 및 보조기구 조건 반영
+- [x] 환승 횟수 및 환승 선호도 반영
+- [x] Hard Filter 적용
+- [x] route별 Score 계산 및 Ranking
+- [x] 기상청 API 조회 및 날씨 penalty 반영
+- [x] DRT / 콜택시 안내 판단
+- [x] Backend 응답 계약 형식 반환
+
+### 미구현 / 추가 필요
+
+- [ ] 오르막길·경사도 정보 반영 X
+- [ ] LLM 연동 X
+- [ ] STT(Speech-to-Text) 연동 X
+- [ ] TTS(Text-to-Speech) 연동 X
+
+> 현재 FastAPI는 **경로 접근성 스코어링 서버** 범위까지만 구현되어 있습니다. 오르막길/경사도와 LLM·STT·TTS 관련 기능은 현재 구현 범위에 포함되어 있지 않습니다.
+
 ## 전체 구조
 
 ```text
