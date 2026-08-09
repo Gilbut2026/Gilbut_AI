@@ -21,8 +21,6 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from . import policy
-
 
 URL = (
     "https://apis.data.go.kr/1360000/"
@@ -49,6 +47,22 @@ MIXED_PRECIP_SNOW_TEMP_C = 1.0
 RAIN_PTY_CODES = {"1", "5"}
 MIXED_PTY_CODES = {"2", "6"}
 SNOW_PTY_CODES = {"3", "7"}
+
+# 동시에 여러 위험이 잡혀도 weatherCondition은 하나만 제공한다.
+# 이 우선순위는 condition 생성 규칙이며 score 가중치와 분리해 유지한다.
+CONDITION_PRIORITY = {
+    "CLEAR": 0,
+    "HEAT": 1,
+    "COLD": 1,
+    "RAIN": 2,
+    "SEVERE_HEAT": 3,
+    "SEVERE_COLD": 3,
+    "HEAVY_RAIN": 4,
+    "SNOW": 4,
+    "HEAVY_SNOW": 5,
+}
+
+REQUIRED_OBSERVATION_CATEGORIES = frozenset({"T1H", "RN1", "PTY"})
 
 
 def parse_float(value: Any, default: float = 0.0) -> float:
@@ -159,11 +173,7 @@ def classify_temperature(temperature: float) -> str | None:
 
 
 def classify_weather(observation: dict[str, Any]) -> str:
-    """기상청 관측값을 하나의 weatherCondition으로 축약한다.
-
-    강수와 기온 위험이 동시에 존재하면 route scoring에서 더 큰 페널티를
-    갖는 condition 하나를 선택한다.
-    """
+    """기상청 관측값을 하나의 weatherCondition으로 축약한다."""
     temperature = parse_float(observation.get("T1H"))
     rain_amount = parse_float(observation.get("RN1"))
     pty = observation.get("PTY", "0")
@@ -182,7 +192,7 @@ def classify_weather(observation: dict[str, Any]) -> str:
 
     return max(
         conditions,
-        key=lambda condition: policy.WEATHER_PENALTY[condition],
+        key=lambda condition: CONDITION_PRIORITY[condition],
     )
 
 
@@ -238,10 +248,23 @@ def fetch_current_observation() -> dict[str, Any]:
     except (KeyError, TypeError) as error:
         raise RuntimeError("기상청 API 관측 항목이 없습니다") from error
 
-    return {
-        str(item["category"]): item["obsrValue"]
-        for item in items
-    }
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("기상청 API 관측 항목이 비어 있습니다")
+
+    observation: dict[str, Any] = {}
+
+    for item in items:
+        if not isinstance(item, dict) or "category" not in item or "obsrValue" not in item:
+            raise RuntimeError("기상청 API 관측 항목 형식이 예상과 다릅니다")
+
+        observation[str(item["category"])] = item["obsrValue"]
+
+    missing = REQUIRED_OBSERVATION_CATEGORIES.difference(observation)
+
+    if missing:
+        raise RuntimeError("기상청 API 필수 관측값이 없습니다")
+
+    return observation
 
 
 def get_weather_condition() -> str:
