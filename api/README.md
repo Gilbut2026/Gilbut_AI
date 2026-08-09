@@ -73,9 +73,9 @@ route_scoring.scoring.score_routes()
 Backend 응답 계약 반환
 ```
 
-FastAPI가 기상청 API를 조회한 뒤 AI 내부에서 생성하여 `score_routes()`에 추가합니다.
+FastAPI가 기상청 API를 조회한 뒤 AI 내부 `environment`를 생성하여 `score_routes()`에 추가합니다.
 
-전달받은 경로 후보를 그대로 Score Function에 넘기고, 날씨 정보만 AI 내부에서 추가합니다.
+Backend에서 전달받은 경로 후보는 그대로 Score Function에 전달하며, 날씨 정보만 AI 내부에서 추가합니다.
 
 ## 실행
 
@@ -115,8 +115,6 @@ Backend가 생성한 경로 후보를 받아 접근성 점수와 순위를 계�
 후보 개수는 고정하지 않습니다. Backend가 `candidates`에 전달한 모든 route를 평가합니다.
 
 ## Backend 요청 구조
-
-
 
 ```json
 {
@@ -190,22 +188,6 @@ underpass × 0.7
 
 이 값에 사용자의 `stairLevel`과 `mobilityAid` 조건을 반영해 `obstaclePenalty`를 계산하고 최종 route score에 포함합니다.
 
-```text
-각 route
-   ↓
-모든 walkSegments 순회
-   ↓
-계단 / 육교 / 지하보도 누적
-   ↓
-route obstacle weight
-   ↓
-stairLevel / mobilityAid 반영
-   ↓
-obstaclePenalty
-   ↓
-최종 route score
-```
-
 `UNKNOWN`은 장애물이 없다는 뜻이 아닙니다. 같은 도보 구간에서 여러 신호가 `UNKNOWN`이어도 해당 구간의 UNKNOWN penalty는 한 번만 적용합니다.
 
 > FastAPI가 Transit API의 WALK 구간을 직접 재조회해 `walkSegments`를 생성하는 것은 아닙니다. 현재 `walkSegments`는 Backend가 요청에 포함해 전달하고 FastAPI는 그대로 Score Function으로 전달합니다.
@@ -252,6 +234,21 @@ return score_routes(scoring_request)
 
 ## 응답
 
+FastAPI는 **각 경로 후보의 스코어링 결과와 DRT/콜택시 안내 판단을 Backend에 반환**합니다.
+
+정상 응답의 최상위 필드는 다음 4개입니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `requestId` | Backend가 보낸 요청 ID. 요청과 응답을 매칭하는 데 사용 |
+| `scoringVersion` | 현재 적용된 경로 스코어링 정책 버전 |
+| `results` | Backend가 보낸 각 route의 스코어링 또는 필터링 결과 |
+| `drtDecision` | 일반 경로와 별도로 DRT 또는 교통약자 콜택시를 안내할지에 대한 판단 |
+
+### 정상 응답 예시
+
+아래 예시는 `route-001`은 정상적으로 점수가 계산되고, `route-002`는 계단 때문에 제외된 경우입니다.
+
 ```json
 {
   "requestId": "req-001",
@@ -270,6 +267,13 @@ return score_routes(scoring_request)
         "transferPenalty": 1.0,
         "weatherPenalty": 0.0
       }
+    },
+    {
+      "routeId": "route-002",
+      "status": "FILTERED",
+      "score": null,
+      "rank": null,
+      "filterCodes": ["STAIR_DIFFICULT_WITH_EXTERNAL_STAIR"]
     }
   ],
   "drtDecision": {
@@ -282,11 +286,164 @@ return score_routes(scoring_request)
 }
 ```
 
+### `results`
+
+`results`에는 Backend가 전달한 각 `routeId`에 대한 결과가 들어갑니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `routeId` | Backend 요청의 route와 결과를 연결하는 식별자 |
+| `status` | `SCORED` 또는 `FILTERED` |
+| `score` | 최종 접근성 점수. `FILTERED`이면 `null` |
+| `rank` | 통과한 경로 중 추천 순위. 1이 가장 우선이며 `FILTERED`이면 `null` |
+| `filterCodes` | 해당 경로가 Hard Filter로 제외된 이유. 통과한 경우 빈 배열 |
+| `scoreBreakdown` | 최종 점수를 구성하는 항목별 penalty. `SCORED` 경로에만 포함 |
+
+#### `status = SCORED`
+
+Hard Filter를 통과하여 실제 점수와 순위가 계산된 경로입니다.
+
+```text
+status = SCORED
+→ score 존재
+→ rank 존재
+→ filterCodes = []
+→ scoreBreakdown 존재
+```
+
+현재 score는 다음 penalty의 합에 음수를 붙여 계산합니다.
+
+```text
+score = -(도보시간 + 도보거리 + 장애물 + 환승 + 날씨 penalty)
+```
+
+따라서 **score가 클수록, 즉 0에 가까울수록 더 편한 경로**입니다.
+
+예를 들어:
+
+```text
+route-A score = -1.45
+route-B score = -5.20
+
+→ route-A가 더 우선되는 경로
+```
+
+#### `status = FILTERED`
+
+점수를 매기기 전에 통행이 어렵거나 불가능하다고 판단되어 제외된 경로입니다.
+
+```text
+status = FILTERED
+→ score = null
+→ rank = null
+→ filterCodes에 제외 사유 포함
+→ scoreBreakdown 없음
+```
+
+현재 `filterCodes`는 다음과 같습니다.
+
+| 코드 | 의미 |
+| --- | --- |
+| `STAIR_DIFFICULT_WITH_EXTERNAL_STAIR` | 계단 이용이 어려운 사용자에게 확인된 외부 계단이 존재 |
+| `WHEELCHAIR_WITH_EXTERNAL_STAIR` | 휠체어 사용 경로에 외부 계단이 있거나 장애물 정보가 불확실함 |
+| `WALK_TIME_EXCEEDED` | 보행 불가 사용자이거나 설정된 보행 가능 시간을 크게 초과 |
+
+### `scoreBreakdown`
+
+최종 `score`가 왜 해당 값이 되었는지 Backend에서 확인할 수 있도록 항목별 penalty를 반환합니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `walkTimePenalty` | 전체 도보시간과 사용자의 보행 가능 시간을 반영한 감점 |
+| `walkDistancePenalty` | 전체 도보거리와 사용자의 보행 가능 수준을 반영한 감점 |
+| `obstaclePenalty` | route 내부의 계단·육교·지하보도와 계단 이용 수준·보조기구를 반영한 감점 |
+| `transferPenalty` | 환승 횟수와 사용자의 환승 선호도를 반영한 감점 |
+| `weatherPenalty` | AI FastAPI가 조회한 날씨와 도보거리를 반영한 감점 |
+
+Backend에서는 `scoreBreakdown`을 이용해 단순 순위뿐 아니라 추천 근거를 구성할 수 있습니다.
+
+예:
+
+```text
+route-001
+→ 도보시간 감점이 작음
+→ 장애물 감점이 없음
+→ 환승 1회 감점 존재
+→ 최종 1위
+```
+
+### `drtDecision`
+
+`drtDecision`은 특정 route의 점수가 아니라 **일반 대중교통 경로 결과를 바탕으로 DRT 또는 교통약자 콜택시를 추가 안내할지 판단한 결과**입니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `show` | DRT 안내를 사용자에게 보여줄지 여부 |
+| `priority` | DRT를 일반 경로보다 우선적으로 노출할지 여부 |
+| `taxiGuide` | DRT 대신 교통약자 콜택시 안내가 필요한지 여부 |
+| `reasonCodes` | DRT/콜택시 판단 근거 목록 |
+| `basedOnRouteId` | DRT 판단의 기준이 된 현재 최상위 통과 경로 ID. 통과 경로가 없으면 `null` 가능 |
+
+현재 `reasonCodes`는 다음과 같습니다.
+
+| 코드 | 의미 |
+| --- | --- |
+| `ASSISTIVE_DEVICE` | 지팡이·보행기·휠체어 등 보조기구 사용 조건 |
+| `LONG_WALK_DISTANCE` | 최상위 일반 경로의 도보거리가 길어 DRT 우선 안내 필요 |
+| `MANY_TRANSFERS` | 최상위 일반 경로의 환승 횟수가 많아 DRT 우선 안내 필요 |
+| `SEVERE_WEATHER` | 폭우·폭설·폭염·한파 등 이동 부담이 큰 날씨 |
+| `NO_PASSABLE_ROUTE` | Hard Filter 이후 통행 가능한 일반 경로가 없음 |
+
+예를 들어:
+
+```json
+{
+  "show": true,
+  "priority": true,
+  "taxiGuide": false,
+  "reasonCodes": ["LONG_WALK_DISTANCE", "MANY_TRANSFERS"],
+  "basedOnRouteId": "route-003"
+}
+```
+
+이면 Backend에서는 **일반 경로는 존재하지만 도보거리와 환승 부담이 커서 DRT를 우선적으로 함께 안내해야 한다**고 해석하면 됩니다.
+
+휠체어 사용자는 현재 정책상 DRT 대신 교통약자 콜택시 안내 대상으로 처리되므로 `taxiGuide=true`가 반환될 수 있습니다.
+
+### Backend에서 응답을 사용하는 흐름
+
+```text
+FastAPI 응답
+   ↓
+results에서 FILTERED 경로 제외
+   ↓
+SCORED 경로의 rank 기준으로 경로 카드 정렬
+   ↓
+scoreBreakdown을 추천 근거/설명에 활용 가능
+   ↓
+drtDecision.show / priority / taxiGuide 확인
+   ↓
+DRT 또는 콜택시 UI 노출 여부 결정
+```
+
+즉 Backend가 FastAPI에서 받는 핵심 결과는 **각 route의 통과 여부, 접근성 점수, 추천 순위, 제외 사유, 항목별 감점 근거, DRT/콜택시 안내 판단**입니다.
+
 ## 오류 처리
 
-Score Function 입력 검증 오류는 기존 `VALIDATION_ERROR` 형식을 그대로 반환합니다.
+Score Function 입력 검증 오류는 `VALIDATION_ERROR` 형식으로 반환합니다.
 
-예상하지 못한 서버 내부 오류는 HTTP 500으로 반환합니다.
+```json
+{
+  "requestId": "req-001",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "totalWalkTimeSec is required: route-001",
+    "retryable": false
+  }
+}
+```
+
+예상하지 못한 FastAPI 내부 오류는 HTTP 500으로 반환합니다.
 
 ```json
 {
