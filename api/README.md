@@ -47,9 +47,9 @@ route_scoring.scoring.score_routes()
 Backend 응답 계약 반환
 ```
 
-** FastAPI가 기상청 API를 조회한 뒤 AI 내부에서 생성하여 `score_routes()`에 추가합니다.
+FastAPI가 기상청 API를 조회한 뒤 AI 내부에서 생성하여 `score_routes()`에 추가합니다.
 
-FastAPI는 Backend가 전달한 `candidates`나 `walkSegments`를 새로 만들거나 재가공하지 않습니다. 전달받은 경로 후보를 그대로 Score Function에 넘기고, 날씨 정보만 AI 내부에서 추가합니다.
+전달받은 경로 후보를 그대로 Score Function에 넘기고, 날씨 정보만 AI 내부에서 추가합니다.
 
 ## 실행
 
