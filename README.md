@@ -21,4 +21,5 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 - `GET /health`: 서버 상태 확인
 - `POST /routes/score`: Backend 경로 후보 스코어링
 
+Backend에서는 `AI_SCORING_URL`을 실행 중인 AI 서버의 `/routes/score` 전체 URL로 설정하면 됩니다.
 FastAPI는 Backend 요청을 그대로 받고, AI 서버 내부에서 기상청 날씨 정보를 추가한 뒤 기존 `score_routes()`를 호출합니다.
