@@ -9,13 +9,13 @@
   },
   "environment": {
     "weatherCondition": "CLEAR",
-    "weatherLookupStatus": "SUCCESS"
+    "weatherLookupStatus": "SUCCESS",
+    "observedAt": "2026-08-03T10:00:00+09:00",
+    "locationBasis": "ORIGIN"
   },
   "candidates": [
     {
       "routeId": "route-001",
-      "routeType": "TRANSIT",
-      "routeOption": null,
       "providerRank": 1,
       "metrics": {
         "totalTimeSec": 1200,
@@ -41,8 +41,6 @@
     },
     {
       "routeId": "route-002",
-      "routeType": "TRANSIT",
-      "routeOption": null,
       "providerRank": 2,
       "metrics": {
         "totalTimeSec": 900,
@@ -68,8 +66,6 @@
     },
     {
       "routeId": "route-003",
-      "routeType": "TRANSIT",
-      "routeOption": null,
       "providerRank": 3,
       "metrics": {
         "totalTimeSec": 1100,
