@@ -1,0 +1,1 @@
+"""Gilbut FastAPI server package."""
