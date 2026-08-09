@@ -116,7 +116,7 @@ Backend가 생성한 경로 후보를 받아 접근성 점수와 순위를 계�
 
 ## Backend 요청 구조
 
-Backend → FastAPI 요청에는 `environment`가 포함되지 않습니다.
+
 
 ```json
 {
