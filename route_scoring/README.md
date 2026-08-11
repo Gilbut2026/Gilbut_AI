@@ -12,7 +12,7 @@
 
 <img src="https://img.shields.io/badge/python-3.7+-3776AB?style=flat-square&logo=python&logoColor=white" alt="python">
 <img src="https://img.shields.io/badge/dependencies-none-success?style=flat-square" alt="dependencies">
-<img src="https://img.shields.io/badge/tests-34%20passed-success?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-7%20passed-success?style=flat-square" alt="tests">
 
 <br>
 <br>
@@ -60,11 +60,7 @@ cd score-function
 #### 2 · 동작 확인
 
 ```bash
-python tests/test_scoring.py
-```
-
-```
-34/34 passed
+python -m unittest discover -s route_scoring/tests -v
 ```
 
 #### 3 · 예시 실행
@@ -145,10 +141,19 @@ request = {
                 "transferCount": 1,             # 환승 횟수
             },
 
-            # 도보 구간별 장애물 정보
+            # 도보 구간별 좌표와 장애물 정보
             "walkSegments": [
                 {
+                    "walkSegmentId": "route-001:walk:0",
+                    "role": "ORIGIN_TO_FIRST_STOP",
                     "segmentScope": "EXTERNAL_WALK",    # 역 밖 구간
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [127.001, 37.501],
+                            [127.002, 37.502],
+                        ],
+                    },
                     "accessibilitySignals": {
                         "stair":     {"state": "PRESENT", "count": 2},
                         "overpass":  {"state": "ABSENT",  "count": 0},
@@ -206,7 +211,7 @@ request = {
 ```json
 {
   "requestId": "req-001",
-  "scoringVersion": "accessibility-score-v1",
+  "scoringVersion": "accessibility-score-v2",
   "results": [
     {
       "routeId": "route-001",
@@ -219,7 +224,18 @@ request = {
         "walkDistancePenalty": 0.45,
         "obstaclePenalty": 0.0,
         "transferPenalty": 1.0,
-        "weatherPenalty": 0.0
+        "weatherPenalty": 0.0,
+        "slopePenalty": 1.5
+      },
+      "slopeSummary": {
+        "status": "SUCCESS",
+        "sampleIntervalM": 50,
+        "analyzedSegmentCount": 1,
+        "totalEligibleSegmentCount": 1,
+        "maxUphillGradePercent": 7.4,
+        "maxDownhillGradePercent": 2.1,
+        "totalAscentM": 12.5,
+        "totalDescentM": 3.0
       }
     },
     {
@@ -329,11 +345,12 @@ score-function
 │   ├── validation.py       입력 검증
 │   ├── filters.py          Hard Filter
 │   ├── score.py            점수 계산
+│   ├── slope.py            50m 샘플링 · 경사 요약 · 사용자별 감점
 │   ├── obstacles.py        계단 · 육교 · 지하보도 집계
 │   └── drt.py              똑버스 · 콜택시 판단
 │
 ├── tests
-│   └── test_scoring.py     34개 정책 검증
+│   └── test_slope.py       경사 계산·정책 검증
 │
 ├── examples
 │   ├── run.py              예시 실행
@@ -355,7 +372,7 @@ score-function
 <br>
 <br>
 
-### score  =  − ( 도보시간 + 도보거리 + 장애물 + 환승 + 날씨 )
+### score  =  − ( 도보시간 + 도보거리 + 장애물 + 환승 + 날씨 + 경사 )
 
 <br>
 
@@ -372,6 +389,7 @@ score-function
 <tr><td><b>장애물</b></td><td>계단 이용 가능 수준 × 보조기구 사용 여부</td></tr>
 <tr><td><b>환승</b></td><td>환승 가능 수준</td></tr>
 <tr><td><b>날씨</b></td><td>날씨 등급 × 도보거리</td></tr>
+<tr><td><b>경사</b></td><td>최대 상승·하강 경사 × 사용자 민감도, 최대 3점</td></tr>
 </table>
 
 <br>
@@ -400,7 +418,7 @@ score-function
 <tr><td width="240"><b>가중치가 임의값</b></td><td>실제 경로 데이터로 검증 후 조정할 예정입니다.</td></tr>
 <tr><td><b>요소 간 상호작용 미반영</b></td><td>선형 가중합이라 계단과 긴 도보가 겹칠 때의 가중된 부담을 산술 합으로만 처리합니다.</td></tr>
 <tr><td><b>육교 · 지하보도 접근성</b></td><td>엘리베이터나 경사로 유무를 구분할 수 없어 가중치로 근사합니다.</td></tr>
-<tr><td><b>경사 · 오르막 미반영</b></td><td>지도 API가 도보 경로 수준의 경사 데이터를 제공하지 않습니다.</td></tr>
+<tr><td><b>경사 데이터 정밀도</b></td><td>ORS SRTM 지형 고도 기반이므로 시설물 경사로·보도 턱 판정에는 사용할 수 없습니다.</td></tr>
 </table>
 
 <br>

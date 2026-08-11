@@ -12,7 +12,7 @@
 
 ### 🧭 Route Scoring
 
-사용자의 보행 능력, 계단 이용 가능 여부, 보조기구, 환승 및 날씨를 반영해 대중교통 후보 경로를 재정렬합니다.
+사용자의 보행 능력, 계단 이용 가능 여부, 보조기구, 환승, 날씨와 ORS 지형 경사를 반영해 후보 경로를 재정렬합니다.
 
 자세한 사용법은 [`route_scoring/README.md`](route_scoring/README.md)를 참고하세요.
 
@@ -32,5 +32,7 @@ uvicorn api.app:app --host 0.0.0.0 --port 8000
 Backend에서는 `AI_SCORING_URL`을 실행 중인 AI 서버의 `/routes/score` 전체 URL로 설정하면 됩니다.
 
 Backend는 사용자 온보딩 정보와 경로 후보(`candidates`, `walkSegments`)를 전달합니다. 날씨 `environment`는 Backend 입력이 아니라 FastAPI가 기상청 API를 조회해 AI 내부에서 생성한 뒤 `route_scoring.scoring.score_routes()`에 추가합니다.
+
+경사 기능은 TMAP WALK geometry를 ORS Elevation Line으로 보강하며 기본값은 비활성화입니다. 새 ORS 키를 설정하고 검증한 뒤 `ORS_SLOPE_ENABLED=true`로 활성화합니다.
 
 FastAPI의 요청 흐름, `walkSegments` 처리, 날씨 조회, 응답 계약은 [`api/README.md`](api/README.md)를 참고하세요.
