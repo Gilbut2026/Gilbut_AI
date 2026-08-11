@@ -33,7 +33,7 @@
 - [ ] LLM 연동 X
 - [ ] STT(Speech-to-Text) 연동 X
 - [ ] TTS(Text-to-Speech) 연동 X
-
+- [ ] DRT 운행 가능 구역 반영 X
 > 현재 FastAPI는 **경로 접근성 스코어링 서버** 범위까지만 구현되어 있습니다. 오르막길/경사도와 LLM·STT·TTS 관련 기능은 현재 구현 범위에 포함되어 있지 않습니다.
 
 ## 🗂️ 전체 구조
