@@ -6,6 +6,7 @@ weather, creates the internal ``environment`` field, and delegates scoring to
 """
 
 from copy import deepcopy
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -13,11 +14,17 @@ from dotenv import load_dotenv
 from fastapi import Body, FastAPI
 from fastapi.responses import JSONResponse
 
+from api.slope_enrichment import (
+    enrich_routes_with_slopes,
+    mark_slope_failed,
+)
 from route_scoring.scoring import score_routes
 from route_scoring.scoring.weather_penalty import get_weather_environment
 
 
 load_dotenv(Path(__file__).with_name(".env"))
+
+LOGGER = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Gilbut Route Scoring API",
@@ -45,6 +52,15 @@ def score_route_candidates(request: Any = Body(...)):
     try:
         scoring_request = deepcopy(request)
         scoring_request["environment"] = get_weather_environment()
+        try:
+            enrich_routes_with_slopes(scoring_request)
+        except Exception:
+            # 외부 고도 보강은 추천 API 전체를 실패시키지 않는다.
+            LOGGER.error(
+                "unexpected slope enrichment failure requestId=%s",
+                request.get("requestId"),
+            )
+            mark_slope_failed(scoring_request)
         return score_routes(scoring_request)
     except Exception:
         return JSONResponse(
