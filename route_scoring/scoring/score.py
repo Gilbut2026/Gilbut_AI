@@ -1,14 +1,14 @@
 """점수 계산.
 
-    score = -(도보시간 + 도보거리 + 장애물 + 환승 + 날씨 페널티)
+    score = -(도보시간 + 도보거리 + 장애물 + 환승 + 날씨 + 경사 페널티)
 
 점수가 높을수록(0에 가까울수록) 편한 경로다.
 항목별 페널티를 함께 반환하여, 왜 이 순위인지 설명할 수 있게 한다.
 """
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
-from . import policy
+from . import policy, slope
 
 
 @dataclass(frozen=True)
@@ -20,11 +20,12 @@ class Breakdown:
     obstacle: float
     transfer: float
     weather: float
+    slope: float
 
     @property
     def total(self):
         return -(self.walk_time + self.walk_distance + self.obstacle
-                 + self.transfer + self.weather)
+                 + self.transfer + self.weather + self.slope)
 
     def as_dict(self):
         return {
@@ -33,6 +34,7 @@ class Breakdown:
             "obstaclePenalty": round(self.obstacle, 2),
             "transferPenalty": round(self.transfer, 2),
             "weatherPenalty": round(self.weather, 2),
+            "slopePenalty": round(self.slope, 2),
         }
 
 
@@ -57,6 +59,7 @@ def calculate(candidate, obstacles, user, weather):
         transfer=transfer_weight * metrics["transferCount"],
         # 날씨는 도보 거리와 함께 작용한다. 밖에 오래 있을수록 영향이 크다.
         weather=weather_weight * walk_distance,
+        slope=slope.calculate_penalty(candidate.get("slopeSummary"), user),
     )
 
 
