@@ -6,7 +6,7 @@
     result = score_routes(request)
 """
 
-from . import drt, filters, obstacles, policy, score, validation
+from . import drt, filters, obstacles, policy, score, slope, validation
 
 
 def score_routes(request):
@@ -56,6 +56,7 @@ def _partition(candidates, user):
                 "score": None,
                 "rank": None,
                 "filterCodes": codes,
+                "slopeSummary": _slope_summary(candidate),
             })
         else:
             passed.append({"candidate": candidate, "obstacles": found})
@@ -87,11 +88,17 @@ def _rank(passed, user, weather):
             "rank": rank,
             "filterCodes": [],
             "scoreBreakdown": entry["breakdown"].as_dict(),
+            "slopeSummary": _slope_summary(entry["candidate"]),
         }
         for rank, entry in enumerate(entries, start=1)
     ]
 
     return entries, results
+
+
+def _slope_summary(candidate):
+    summary = candidate.get("slopeSummary")
+    return summary if isinstance(summary, dict) else slope.not_requested_summary()
 
 
 def _sort_key(entry):

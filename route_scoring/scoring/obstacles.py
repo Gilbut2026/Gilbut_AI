@@ -52,7 +52,11 @@ def collect(walk_segments):
         if segment.get("segmentScope") == policy.STATION_INTERNAL:
             continue
 
-        signals = segment.get("accessibilitySignals") or {}
+        # geometry만 전달된 구간은 장애물 조회 실패를 뜻하지 않는다. 명시적인
+        # accessibilitySignals가 있을 때만 UNKNOWN/PRESENT를 집계한다.
+        signals = segment.get("accessibilitySignals")
+        if not isinstance(signals, dict):
+            continue
         segment_unknown = False
 
         for kind in policy.OBSTACLE_KINDS:

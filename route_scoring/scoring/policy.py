@@ -3,7 +3,7 @@
 가중치 튜닝은 이 파일만 수정하면 된다.
 """
 
-SCORING_VERSION = "accessibility-score-v1"
+SCORING_VERSION = "accessibility-score-v2"
 
 
 # --- 장애물 상태 ---
@@ -32,6 +32,12 @@ SEVERE_WEATHER_REASON = "SEVERE_WEATHER"
 NO_PASSABLE_ROUTE = "NO_PASSABLE_ROUTE"
 
 OBSTACLE_KINDS = ("stair", "overpass", "underpass")
+
+# --- 경사 분석 상태 ---
+SLOPE_NOT_REQUESTED = "NOT_REQUESTED"
+SLOPE_SUCCESS = "SUCCESS"
+SLOPE_PARTIAL = "PARTIAL"
+SLOPE_FAILED = "FAILED"
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +104,19 @@ OBSTACLE_WEIGHT = {
 # 계단·육교·지하보도가 각각 UNKNOWN인 것은 장애물이 세 개라는 뜻이 아니라
 # 그 구간 조회가 통째로 실패했다는 뜻이므로, 구간 단위로 한 번만 적용한다.
 UNKNOWN_SEGMENT_PENALTY = 1.0
+
+# 경사도는 50m 단위 지형 경향만 점수에 반영한다. 공개 ORS의 SRTM 고도는
+# 보도 턱이나 시설물 경사로를 판별할 정밀도가 아니므로 Hard Filter에 쓰지 않는다.
+SLOPE_MODERATE_GRADE_PERCENT = 4.0
+SLOPE_STEEP_GRADE_PERCENT = 7.0
+SLOPE_UPHILL_PENALTY = (0.0, 0.5, 1.5)
+SLOPE_DOWNHILL_PENALTY = (0.0, 0.25, 1.0)
+SLOPE_SENSITIVITY_MULTIPLIER = {
+    "LOW": 1.0,
+    "MEDIUM": 1.5,
+    "HIGH": 2.0,
+}
+SLOPE_MAX_PENALTY = 3.0
 
 # DRT 우선 노출 임계값
 DRT_LONG_WALK_METERS = 800

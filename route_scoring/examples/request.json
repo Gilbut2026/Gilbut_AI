@@ -30,6 +30,13 @@
           "segmentScope": "EXTERNAL_WALK",
           "distanceM": 400,
           "durationSec": 350,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [127.001, 37.501],
+              [127.002, 37.502]
+            ]
+          },
           "pedestrianEnrichmentStatus": "SUCCESS",
           "accessibilitySignals": {
             "stair": { "state": "ABSENT", "count": 0 },
@@ -55,6 +62,13 @@
           "segmentScope": "EXTERNAL_WALK",
           "distanceM": 300,
           "durationSec": 260,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [127.011, 37.511],
+              [127.012, 37.512]
+            ]
+          },
           "pedestrianEnrichmentStatus": "SUCCESS",
           "accessibilitySignals": {
             "stair": { "state": "PRESENT", "count": 2 },
@@ -80,6 +94,13 @@
           "segmentScope": "EXTERNAL_WALK",
           "distanceM": 350,
           "durationSec": 300,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [127.021, 37.521],
+              [127.022, 37.522]
+            ]
+          },
           "pedestrianEnrichmentStatus": "FAILED",
           "accessibilitySignals": {
             "stair": { "state": "UNKNOWN", "count": null },

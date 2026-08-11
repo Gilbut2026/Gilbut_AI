@@ -24,17 +24,18 @@
 - [x] Hard Filter 적용
 - [x] route별 Score 계산 및 Ranking
 - [x] 기상청 API 조회 및 날씨 penalty 반영
+- [x] ORS Elevation Line 기반 50m 도보 경사 분석 및 penalty 반영
+- [x] ORS 실패·쿼터 초과·타임아웃 시 경사 미반영 fallback
 - [x] DRT / 콜택시 안내 판단
 - [x] Backend 응답 계약 형식 반환
 
 ### 🚧 미구현 / 추가 필요
 
-- [ ] 오르막길·경사도 정보 반영 X
 - [ ] LLM 연동 X
 - [ ] STT(Speech-to-Text) 연동 X
 - [ ] TTS(Text-to-Speech) 연동 X
-- [ ] DRT 운행 가능 구역 반영 X
-> 현재 FastAPI는 **경로 접근성 스코어링 서버** 범위까지만 구현되어 있습니다. 오르막길/경사도와 LLM·STT·TTS 관련 기능은 현재 구현 범위에 포함되어 있지 않습니다.
+
+> 현재 FastAPI는 **경로 접근성 스코어링 서버** 범위까지 구현되어 있습니다. LLM·STT·TTS 관련 기능은 현재 구현 범위에 포함되어 있지 않습니다.
 
 ## 🗂️ 전체 구조
 
@@ -43,6 +44,7 @@ Gilbut_AI/
 ├── api/                       FastAPI 서버 계층
 │   ├── __init__.py
 │   ├── app.py                 FastAPI 진입점
+│   ├── slope_enrichment.py    ORS Elevation Line 호출·실패 격리
 │   ├── README.md              연동 문서
 │   ├── requirements.txt       서버 의존성
 │   └── .env.example           기상청 API 키 예시
@@ -66,6 +68,8 @@ api/app.py
    ├─ Backend request 수신
    ├─ 기상청 현재 날씨 조회
    ├─ AI 내부 environment 생성
+   ├─ WALK geometry를 50m 간격으로 리샘플링
+   └─ ORS Elevation Line으로 고도 보강
    ▼
 route_scoring.scoring.score_routes()
    │
@@ -81,7 +85,7 @@ Backend 응답 계약 반환
 
 FastAPI가 기상청 API를 조회한 뒤 AI 내부 `environment`를 생성하여 `score_routes()`에 추가합니다.
 
-Backend에서 전달받은 경로 후보는 그대로 Score Function에 전달하며, 날씨 정보만 AI 내부에서 추가합니다.
+Backend에서 전달받은 TMAP 경로는 변경하지 않습니다. FastAPI가 WALK geometry의 고도와 경사 요약, 날씨 정보만 AI 내부 필드로 추가합니다.
 
 ## ▶️ 실행
 
@@ -92,11 +96,17 @@ pip install -r api/requirements.txt
 cp api/.env.example api/.env
 ```
 
-`api/.env`에 기상청 서비스 키를 설정합니다.
+`api/.env`에 기상청 서비스 키와 ORS 키를 설정합니다. 경사 기능은 키 설정과 스테이징 검증 전까지 기본 비활성화입니다.
 
 ```env
 KMA_SERVICE_KEY=your_kma_service_key_here
+ORS_API_KEY=your_ors_api_key_here
+ORS_SLOPE_ENABLED=false
 ```
+
+`.env`에는 위 세 값만 둡니다. ORS URL, 연결·응답 제한시간, 전체 처리 예산,
+동시 호출 수와 최대 호출 수는 `slope_enrichment.py`의 안전한 기본값을 사용합니다.
+특수한 운영 환경에서만 프로세스 환경변수로 개별 override합니다.
 
 서버 실행:
 
@@ -144,7 +154,18 @@ Backend가 생성한 경로 후보를 받아 접근성 점수와 순위를 계�
       },
       "walkSegments": [
         {
+          "walkSegmentId": "route-001:walk:0",
+          "role": "ORIGIN_TO_FIRST_STOP",
           "segmentScope": "EXTERNAL_WALK",
+          "distanceM": 400,
+          "durationSec": 350,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [127.001, 37.501],
+              [127.002, 37.502]
+            ]
+          },
           "accessibilitySignals": {
             "stair": {"state": "PRESENT", "count": 1},
             "overpass": {"state": "ABSENT", "count": 0},
@@ -197,6 +218,15 @@ underpass × 0.7
 `UNKNOWN`은 장애물이 없다는 뜻이 아닙니다. 같은 도보 구간에서 여러 신호가 `UNKNOWN`이어도 해당 구간의 UNKNOWN penalty는 한 번만 적용합니다.
 
 > FastAPI가 Transit API의 WALK 구간을 직접 재조회해 `walkSegments`를 생성하는 것은 아닙니다. 현재 `walkSegments`는 Backend가 요청에 포함해 전달하고 FastAPI는 그대로 Score Function으로 전달합니다.
+
+## ⛰️ 경사 처리
+
+- TMAP WALK geometry는 `[경도, 위도]` 순서의 GeoJSON `LineString`으로 받습니다.
+- 누적 수평거리 50m 간격으로 리샘플링하고 25m 미만 꼬리는 직전 구간에 합칩니다. 전체 25m 미만 구간은 분석하지 않습니다.
+- ORS 호출은 동시 4개, 요청당 최대 20개, 개별 5초, 전체 8초 예산으로 실행하며 재시도하지 않습니다.
+- 데모·저트래픽 Standard 운영을 전제로 하며 캐시는 사용하지 않습니다.
+- 후보의 모든 분석 대상 구간이 성공한 `SUCCESS`일 때만 최대 3점의 `slopePenalty`를 적용합니다. `PARTIAL`, `FAILED`, `NOT_REQUESTED`는 0점입니다.
+- ORS 응답은 SRTM 지형 고도이므로 시설물 경사로나 보도 턱 판정 및 Hard Filter에는 사용하지 않습니다.
 
 ## 🌦️ 날씨 처리
 
@@ -258,7 +288,7 @@ FastAPI는 **각 경로 후보의 스코어링 결과와 DRT/콜택시 안내 �
 ```json
 {
   "requestId": "req-001",
-  "scoringVersion": "accessibility-score-v1",
+  "scoringVersion": "accessibility-score-v2",
   "results": [
     {
       "routeId": "route-001",
@@ -271,7 +301,18 @@ FastAPI는 **각 경로 후보의 스코어링 결과와 DRT/콜택시 안내 �
         "walkDistancePenalty": 0.45,
         "obstaclePenalty": 0.0,
         "transferPenalty": 1.0,
-        "weatherPenalty": 0.0
+        "weatherPenalty": 0.0,
+        "slopePenalty": 1.5
+      },
+      "slopeSummary": {
+        "status": "SUCCESS",
+        "sampleIntervalM": 50,
+        "analyzedSegmentCount": 1,
+        "totalEligibleSegmentCount": 1,
+        "maxUphillGradePercent": 7.4,
+        "maxDownhillGradePercent": 2.1,
+        "totalAscentM": 12.5,
+        "totalDescentM": 3.0
       }
     },
     {
@@ -304,6 +345,7 @@ FastAPI는 **각 경로 후보의 스코어링 결과와 DRT/콜택시 안내 �
 | `rank` | 통과한 경로 중 추천 순위. 1이 가장 우선이며 `FILTERED`이면 `null` |
 | `filterCodes` | 해당 경로가 Hard Filter로 제외된 이유. 통과한 경우 빈 배열 |
 | `scoreBreakdown` | 최종 점수를 구성하는 항목별 penalty. `SCORED` 경로에만 포함 |
+| `slopeSummary` | ORS 경사 분석 상태와 최대 상승·하강 경사, 누적 고도 |
 
 #### ✅ `status = SCORED`
 
@@ -320,7 +362,7 @@ status = SCORED
 현재 score는 다음 penalty의 합에 음수를 붙여 계산합니다.
 
 ```text
-score = -(도보시간 + 도보거리 + 장애물 + 환승 + 날씨 penalty)
+score = -(도보시간 + 도보거리 + 장애물 + 환승 + 날씨 + 경사 penalty)
 ```
 
 따라서 **score가 클수록, 즉 0에 가까울수록 더 편한 경로**입니다.
@@ -365,6 +407,7 @@ status = FILTERED
 | `obstaclePenalty` | route 내부의 계단·육교·지하보도와 계단 이용 수준·보조기구를 반영한 감점 |
 | `transferPenalty` | 환승 횟수와 사용자의 환승 선호도를 반영한 감점 |
 | `weatherPenalty` | AI FastAPI가 조회한 날씨와 도보거리를 반영한 감점 |
+| `slopePenalty` | 최대 상승·하강 경사와 사용자 보행 민감도를 반영한 0~3점 감점 |
 
 Backend에서는 `scoreBreakdown`을 이용해 단순 순위뿐 아니라 추천 근거를 구성할 수 있습니다.
 
@@ -468,6 +511,6 @@ Score Function 입력 검증 오류는 `VALIDATION_ERROR` 형식으로 반환합
 AI_SCORING_URL=http://<AI_SERVER_HOST>:8000/routes/score
 ```
 
-현재 Backend가 전달해야 하는 핵심 데이터는 사용자 온보딩 값, route별 metrics, 그리고 장애물 계산에 필요한 `walkSegments`입니다.
+현재 Backend가 전달해야 하는 핵심 데이터는 사용자 온보딩 값, route별 metrics, 그리고 경사·장애물 계산에 필요한 `walkSegments`와 WALK geometry입니다.
 
 날씨 `environment`는 Backend 전달 항목이 아니라 FastAPI 내부 생성값입니다.
