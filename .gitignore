@@ -1,0 +1,7 @@
+
+# Local Label Studio
+.DS_Store
+route_scoring/tuning/label_studio/.labelstudio-venv/
+route_scoring/tuning/label_studio/label_studio.log
+route_scoring/tuning/label_studio/gilbut-weight-tuning/
+route_scoring/tuning/label_studio.zip

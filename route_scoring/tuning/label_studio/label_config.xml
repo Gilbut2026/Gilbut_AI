@@ -1,0 +1,56 @@
+<View>
+  <Style>
+    .lsf-main-content { max-width: 1100px; margin: 0 auto; }
+    .case-box {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .route-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+    .route-card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+    }
+  </Style>
+
+  <Header value="길벗 경로 선호도 평가"/>
+  <Header value="본인의 개인적 선호가 아니라, 아래 사용자의 입장에서 더 편한 경로를 선택해주세요." size="4"/>
+
+  <View className="case-box">
+    <Header value="사용자 정보" size="3"/>
+    <Text name="user" value="$user"/>
+  </View>
+
+  <View className="route-grid">
+    <View className="route-card">
+      <Header value="경로 A" size="3"/>
+      <Text name="route_a" value="$route_a"/>
+    </View>
+
+    <View className="route-card">
+      <Header value="경로 B" size="3"/>
+      <Text name="route_b" value="$route_b"/>
+    </View>
+  </View>
+
+  <Header value="이 사용자에게 어느 경로가 더 편한가요?" size="3"/>
+
+  <Choices
+    name="preferred_route"
+    toName="user"
+    choice="single"
+    required="true"
+    showInLine="true"
+  >
+    <Choice value="A" alias="경로 A"/>
+    <Choice value="SIMILAR" alias="비슷함"/>
+    <Choice value="B" alias="경로 B"/>
+  </Choices>
+</View>

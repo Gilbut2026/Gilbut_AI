@@ -1,0 +1,279 @@
+{
+  "evaluation": {
+    "evaluators": [
+      "2"
+    ],
+    "label_files": [
+      "human_labels.json"
+    ],
+    "labeled_cases": 120,
+    "train_cases": 96,
+    "test_cases": 24,
+    "unanimous_rate_on_multi_rater_cases": null
+  },
+  "tuning": {
+    "regularization": 0.015,
+    "report_tie_margin": 0.35,
+    "tuned_parameters": [
+      "walk.WITHIN_10_MINUTES",
+      "walk.WITHIN_20_MINUTES",
+      "walk.OVER_30_MINUTES",
+      "stair.AVAILABLE",
+      "stair.SLIGHTLY_DIFFICULT",
+      "transfer.AVAILABLE",
+      "transfer.FEWER_PREFERRED",
+      "transfer.AVOID_PREFERRED",
+      "weather.RAIN",
+      "weather.HEAVY_RAIN",
+      "weather.SNOW",
+      "weather.HEAVY_SNOW",
+      "weather.HEAT",
+      "weather.SEVERE_HEAT",
+      "weather.COLD",
+      "weather.SEVERE_COLD",
+      "aid_multiplier",
+      "obstacle.stair",
+      "obstacle.overpass",
+      "obstacle.underpass",
+      "slope_up.0",
+      "slope_up.1",
+      "slope_down.0",
+      "slope_down.1",
+      "slope_sensitivity.MEDIUM",
+      "slope_sensitivity.HIGH"
+    ],
+    "train_objective": 0.25860983689610395
+  },
+  "baseline_metrics": {
+    "train": {
+      "accuracy": 0.6145833333333334,
+      "n": 96,
+      "preference_accuracy": 0.6145833333333334,
+      "preference_n": 96,
+      "by_type": {
+        "AID_VS_OBSTACLE": {
+          "accuracy": 0.625,
+          "n": 16
+        },
+        "TRANSFER_VS_OBSTACLE": {
+          "accuracy": 0.6875,
+          "n": 16
+        },
+        "WALK_VS_OBSTACLE": {
+          "accuracy": 0.6875,
+          "n": 16
+        },
+        "WALK_VS_SLOPE": {
+          "accuracy": 0.375,
+          "n": 16
+        },
+        "WALK_VS_TRANSFER": {
+          "accuracy": 0.625,
+          "n": 16
+        },
+        "WEATHER_DISTANCE": {
+          "accuracy": 0.6875,
+          "n": 16
+        }
+      }
+    },
+    "test": {
+      "accuracy": 0.6666666666666666,
+      "n": 24,
+      "preference_accuracy": 0.6666666666666666,
+      "preference_n": 24,
+      "by_type": {
+        "AID_VS_OBSTACLE": {
+          "accuracy": 0.25,
+          "n": 4
+        },
+        "TRANSFER_VS_OBSTACLE": {
+          "accuracy": 0.75,
+          "n": 4
+        },
+        "WALK_VS_OBSTACLE": {
+          "accuracy": 0.75,
+          "n": 4
+        },
+        "WALK_VS_SLOPE": {
+          "accuracy": 0.5,
+          "n": 4
+        },
+        "WALK_VS_TRANSFER": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "WEATHER_DISTANCE": {
+          "accuracy": 0.75,
+          "n": 4
+        }
+      }
+    }
+  },
+  "tuned_metrics": {
+    "train": {
+      "accuracy": 0.84375,
+      "n": 96,
+      "preference_accuracy": 0.84375,
+      "preference_n": 96,
+      "by_type": {
+        "AID_VS_OBSTACLE": {
+          "accuracy": 0.8125,
+          "n": 16
+        },
+        "TRANSFER_VS_OBSTACLE": {
+          "accuracy": 0.875,
+          "n": 16
+        },
+        "WALK_VS_OBSTACLE": {
+          "accuracy": 0.8125,
+          "n": 16
+        },
+        "WALK_VS_SLOPE": {
+          "accuracy": 0.6875,
+          "n": 16
+        },
+        "WALK_VS_TRANSFER": {
+          "accuracy": 0.875,
+          "n": 16
+        },
+        "WEATHER_DISTANCE": {
+          "accuracy": 1.0,
+          "n": 16
+        }
+      }
+    },
+    "test": {
+      "accuracy": 0.7916666666666666,
+      "n": 24,
+      "preference_accuracy": 0.7916666666666666,
+      "preference_n": 24,
+      "by_type": {
+        "AID_VS_OBSTACLE": {
+          "accuracy": 0.5,
+          "n": 4
+        },
+        "TRANSFER_VS_OBSTACLE": {
+          "accuracy": 0.75,
+          "n": 4
+        },
+        "WALK_VS_OBSTACLE": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "WALK_VS_SLOPE": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "WALK_VS_TRANSFER": {
+          "accuracy": 1.0,
+          "n": 4
+        },
+        "WEATHER_DISTANCE": {
+          "accuracy": 0.5,
+          "n": 4
+        }
+      }
+    }
+  },
+  "baseline_weights": {
+    "walk": {
+      "WITHIN_10_MINUTES": 2.5,
+      "WITHIN_20_MINUTES": 1.5,
+      "OVER_30_MINUTES": 1.0
+    },
+    "stair": {
+      "AVAILABLE": 0.1,
+      "SLIGHTLY_DIFFICULT": 2.0
+    },
+    "transfer": {
+      "AVAILABLE": 1.0,
+      "FEWER_PREFERRED": 2.0,
+      "AVOID_PREFERRED": 5.0
+    },
+    "weather": {
+      "CLEAR": 0.0,
+      "RAIN": 2.0,
+      "HEAVY_RAIN": 3.0,
+      "SNOW": 3.0,
+      "HEAVY_SNOW": 4.0,
+      "HEAT": 1.5,
+      "SEVERE_HEAT": 2.5,
+      "COLD": 1.5,
+      "SEVERE_COLD": 2.5
+    },
+    "aid_multiplier": 1.5,
+    "obstacle": {
+      "stair": 1.0,
+      "overpass": 0.7,
+      "underpass": 0.7
+    },
+    "unknown_segment_penalty": 1.0,
+    "slope_up": [
+      0.5,
+      1.5
+    ],
+    "slope_down": [
+      0.25,
+      1.0
+    ],
+    "slope_sensitivity": {
+      "LOW": 1.0,
+      "MEDIUM": 1.5,
+      "HIGH": 2.0
+    }
+  },
+  "best_weights": {
+    "walk": {
+      "WITHIN_10_MINUTES": 6.25,
+      "WITHIN_20_MINUTES": 3.3607879593749996,
+      "OVER_30_MINUTES": 0.5703155325000001
+    },
+    "stair": {
+      "AVAILABLE": 0.20728669500000002,
+      "SLIGHTLY_DIFFICULT": 2.9290661859375007
+    },
+    "transfer": {
+      "AVAILABLE": 0.4,
+      "FEWER_PREFERRED": 2.04127875,
+      "AVOID_PREFERRED": 2.6814046874999997
+    },
+    "weather": {
+      "CLEAR": 0.0,
+      "RAIN": 2.7301574999999993,
+      "HEAVY_RAIN": 4.030780792499999,
+      "SNOW": 6.430312499999999,
+      "HEAVY_SNOW": 10.0,
+      "HEAT": 0.6000000000000001,
+      "SEVERE_HEAT": 6.25,
+      "COLD": 2.3285184199199995,
+      "SEVERE_COLD": 6.25
+    },
+    "aid_multiplier": 1.3503656249999998,
+    "obstacle": {
+      "stair": 2.5,
+      "overpass": 0.27999999999999997,
+      "underpass": 0.366933168
+    },
+    "unknown_segment_penalty": 1.0,
+    "slope_up": [
+      1.0618362562499999,
+      1.2524675625000006
+    ],
+    "slope_down": [
+      0.25,
+      1.0
+    ],
+    "slope_sensitivity": {
+      "LOW": 1.0,
+      "MEDIUM": 1.81125,
+      "HIGH": 1.8201049999999999
+    }
+  },
+  "notes": [
+    "CLEAR=0과 slope LOW sensitivity=1.0은 상대척도 기준점으로 고정.",
+    "Hard Filter, DRT 임계값, 정규화 bins, 경사 구간 경계값은 이번 weight tuning 대상이 아님.",
+    "데이터에 UNKNOWN 장애물 신호가 없으면 UNKNOWN_SEGMENT_PENALTY는 기존값 유지.",
+    "최종 채택은 train이 아니라 test 성능을 우선 확인."
+  ]
+}

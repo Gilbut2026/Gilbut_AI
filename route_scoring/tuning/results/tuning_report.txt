@@ -1,0 +1,24 @@
+=== 길벗 가중치 튜닝 결과 ===
+평가자: 2
+라벨 case: 120 / 120
+train/test: 96 / 24
+
+[Baseline]
+train agreement: 61.5% (A/B only 61.5%)
+test  agreement: 66.7% (A/B only 66.7%)
+
+[Tuned]
+train agreement: 84.4% (A/B only 84.4%)
+test  agreement: 79.2% (A/B only 79.2%)
+
+[Tuned test by trade-off]
+AID_VS_OBSTACLE: 50.0% (n=4)
+TRANSFER_VS_OBSTACLE: 75.0% (n=4)
+WALK_VS_OBSTACLE: 100.0% (n=4)
+WALK_VS_SLOPE: 100.0% (n=4)
+WALK_VS_TRANSFER: 100.0% (n=4)
+WEATHER_DISTANCE: 50.0% (n=4)
+
+최종 가중치: results/policy_tuned_snippet.py
+상세 결과: results/best_weights.json
+※ tuned test 성능이 baseline test보다 좋아졌는지 확인한 뒤 policy.py에 반영.
