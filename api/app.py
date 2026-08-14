@@ -4,6 +4,8 @@ Backend sends user context and route candidates. The API layer queries current
 weather, creates the internal ``environment`` field, and delegates scoring to
 ``route_scoring``.
 """
+import logging
+logging.basicConfig(level=logging.INFO)
 
 from copy import deepcopy
 import logging
