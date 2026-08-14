@@ -11,6 +11,8 @@ from __future__ import annotations
 import optimize_weights as tuning
 
 
+ORIGINAL_TUNABLE_PARAMETERS = tuning.tunable_parameters
+
 SLOPE_PARAMS = {
     "slope_up.0",
     "slope_up.1",
@@ -50,7 +52,7 @@ def slope_sensitivity(user):
 
 
 def tunable_parameters(cases):
-    params = tuning.tunable_parameters(cases)
+    params = ORIGINAL_TUNABLE_PARAMETERS(cases)
     has_explicit_slope_level = all(
         isinstance(case.get("userContext"), dict)
         and case["userContext"].get("slopeLevel")
