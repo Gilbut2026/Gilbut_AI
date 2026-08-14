@@ -192,8 +192,18 @@ def calculate_penalty(summary, user):
 
 
 def sensitivity_level(user):
-    """기존 프로필 값 중 가장 취약한 항목으로 경사 민감도를 결정한다."""
+    """slopeLevel을 우선 사용하고, 없을 때만 기존 프로필로 민감도를 추정한다."""
     user = user if isinstance(user, dict) else {}
+
+    slope_level = user.get("slopeLevel")
+    if slope_level == "DIFFICULT":
+        return "HIGH"
+    if slope_level == "SLIGHTLY_DIFFICULT":
+        return "MEDIUM"
+    if slope_level == "AVAILABLE":
+        return "LOW"
+
+    # 구버전 요청이나 slopeLevel이 없는 테스트/클라이언트와의 하위 호환 fallback.
     if (
         user.get("mobilityAid") == "WHEELCHAIR"
         or user.get("stairLevel") == "DIFFICULT"
