@@ -21,6 +21,8 @@ from api.slope_enrichment import (
 from route_scoring.scoring import score_routes
 from route_scoring.scoring.weather_penalty import get_weather_environment
 
+import logging
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv(Path(__file__).with_name(".env"))
 
