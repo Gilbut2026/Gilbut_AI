@@ -1,5 +1,6 @@
 import os
 import json
+from pathlib import Path
 
 from google import genai
 from dotenv import load_dotenv
@@ -9,7 +10,8 @@ from dotenv import load_dotenv
 # 환경변수 로드
 # =========================================================
 
-load_dotenv("api/.env")
+ENV_PATH = Path(__file__).with_name(".env")
+load_dotenv(ENV_PATH)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -19,21 +21,29 @@ if not GEMINI_API_KEY:
     )
 
 
-# GEMINI_API_KEY 환경변수를 자동으로 사용
-client = genai.Client()
+# Gemini Client
+client = genai.Client(
+    api_key=GEMINI_API_KEY
+)
 
 
 # =========================================================
 # 챗봇
 # =========================================================
 
-def run_chatbot(stt_text: str, state: dict | None = None) -> dict:
+def run_chatbot(
+    stt_text: str,
+    state: dict | None = None
+) -> dict:
+
     state = state or {}
 
     prompt = f"""
 당신은 교통약자 이동상담 앱 'AI 길벗'의 챗봇입니다.
 
-사용자의 발화를 분석하여 반드시 JSON으로만 반환하세요.
+사용자의 발화와 현재 대화 상태를 분석하여
+반드시 JSON으로만 반환하세요.
+
 절대 추측하거나 없는 정보를 만들지 마세요.
 
 사용 가능한 intent:
@@ -46,6 +56,17 @@ def run_chatbot(stt_text: str, state: dict | None = None) -> dict:
 - CHECK_ELEVATOR
 - UPDATE_CONDITION
 - UNKNOWN
+
+각 intent의 의미:
+- SET_DESTINATION: 사용자가 목적지를 말하거나 변경함
+- SEARCH_ROUTE: 목적지까지 이동 경로를 요청함
+- SEARCH_RESTROOM: 화장실 위치 또는 정보를 요청함
+- SEARCH_SHELTER: 쉼터 위치 또는 정보를 요청함
+- GET_WEATHER: 날씨 정보를 요청함
+- REQUEST_DRT: DRT, 똑버스, 콜택시 등 이동지원 차량을 요청함
+- CHECK_ELEVATOR: 지하철역 엘리베이터 정보를 요청함
+- UPDATE_CONDITION: 현재 몸 상태나 이동 상황을 말함
+- UNKNOWN: 위 intent에 해당하지 않음
 
 추출 항목:
 - destination: 목적지 장소명
@@ -79,6 +100,8 @@ def run_chatbot(stt_text: str, state: dict | None = None) -> dict:
 - 실제 경로 시간, 거리, 날씨, 시설 위치 등 외부 데이터 조회가 필요한 정보는 절대 만들어내지 마세요.
 - 데이터 조회가 필요한 경우 "찾아볼게요", "확인해볼게요" 정도로만 응답하세요.
 - 사용자가 명확하게 말하지 않은 목적지는 추측하지 마세요.
+- "병원", "역", "화장실"처럼 특정 장소명이 아닌 표현만 나온 경우 목적지를 임의로 정하지 마세요.
+- 현재 대화 상태에 이미 목적지가 있다면 필요할 때 참고할 수 있습니다.
 """
 
     # =====================================================
@@ -95,28 +118,16 @@ def run_chatbot(stt_text: str, state: dict | None = None) -> dict:
     if not text:
         raise ValueError("Gemini 응답이 비어 있습니다.")
 
-    # 혹시 Gemini가 ```json ... ``` 형태로 반환할 경우 제거
+    # ```json ... ``` 제거
     text = text.replace("```json", "")
     text = text.replace("```", "")
     text = text.strip()
 
-    # JSON 문자열 → Python dict
-    return json.loads(text)
+    try:
+        result = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Gemini 응답을 JSON으로 변환할 수 없습니다: {text}"
+        ) from e
 
-
-# =========================================================
-# 단독 테스트
-# =========================================================
-
-if __name__ == "__main__":
-    result = run_chatbot(
-        "오늘 무릎이 아픈데 아주대병원 가고 싶어"
-    )
-
-    print(
-        json.dumps(
-            result,
-            ensure_ascii=False,
-            indent=2
-        )
-    )
+    return result
