@@ -34,9 +34,24 @@ pinned: false
   - 평가자 1명당 40문항
   - case 1개당 3개 독립 평가
 
-## Hugging Face 설정
+## 빠른 배포
 
-Space `Settings -> Variables and secrets`에서 아래를 추가합니다.
+토큰을 채팅이나 코드에 적지 말고 로컬 환경변수로만 설정합니다.
+
+```bash
+cd route_scoring/tuning/hf_space
+pip install -r requirements.txt
+
+export HF_TOKEN=hf_...
+export HF_SPACE_REPO=Robot-HJM/gilbut-slope-preference-survey
+export HF_DATASET_REPO=Robot-HJM/gilbut-slope-preference-data
+
+python deploy_space.py
+```
+
+`deploy_space.py`는 Space와 private Dataset repo 생성을 시도한 뒤 UI 파일을 Space에 업로드합니다.
+
+그 다음 Hugging Face Space `Settings -> Variables and secrets`에서 아래를 추가합니다.
 
 ### Secret
 - `HF_TOKEN`: Dataset repo에 write 가능한 Hugging Face token
@@ -44,9 +59,7 @@ Space `Settings -> Variables and secrets`에서 아래를 추가합니다.
 ### Variable
 - `HF_DATASET_REPO`: 예) `Robot-HJM/gilbut-slope-preference-data`
 
-Dataset repo가 없으면 Space가 private Dataset repo 생성을 시도합니다.
-
-> 토큰은 코드나 GitHub에 커밋하지 말고 Hugging Face Space Secret에만 넣습니다.
+> 토큰은 GitHub에 커밋하거나 채팅에 붙여넣지 않습니다.
 
 ## 저장 형식
 
@@ -60,6 +73,7 @@ responses/
 ```
 
 동일 평가자가 동일 case를 다시 제출하면 같은 경로에 최신 응답이 저장됩니다.
+같은 슬롯으로 다시 접속하면 이미 저장된 case는 자동으로 건너뜁니다.
 
 ## 튜닝용 CSV 내보내기
 
