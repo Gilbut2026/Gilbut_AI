@@ -82,26 +82,43 @@ def score_route_candidates(request: Any = Body(...)):
 
 @app.post("/chat")
 def chat(request: dict = Body(...)):
-    try:
-        message = request.get("message")
+    """백엔드(ChatService)의 발화 분석 요청을 처리한다.
 
-        if not message:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": {
-                        "code": "INVALID_MESSAGE",
-                        "message": "message is required",
-                    }
-                },
-            )
+    요청: {"sessionId": ..., "state": ..., "message": ..., "context": {...}}
+    응답: {"intent": ..., "action": ..., "value": ..., "referencePlace": ...}
+    """
+    message = request.get("message")
 
-        result = run_chatbot(
-            stt_text=message,
-            state=request.get("state", {}),
+    if not message or not str(message).strip():
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "code": "INVALID_MESSAGE",
+                    "message": "message is required",
+                }
+            },
         )
 
-        return result
+    try:
+        return run_chatbot(
+            message=message,
+            state=request.get("state"),
+            context=request.get("context") or {},
+        )
+
+    except ValueError:
+        # 모델 응답 파싱 실패는 대화를 끊지 않고 범위 밖으로 처리한다.
+        LOGGER.warning(
+            "chat response parsing failed sessionId=%s",
+            request.get("sessionId"),
+        )
+        return {
+            "intent": "OUT_OF_SCOPE",
+            "action": "OUT_OF_SCOPE",
+            "value": None,
+            "referencePlace": None,
+        }
 
     except Exception:
         LOGGER.exception("chat processing failed")
