@@ -15,7 +15,7 @@ from route_scoring.scoring import policy, slope
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_ORS_ELEVATION_URL = (
-    "https://api.heigit.org/openelevationservice/v0/elevation/line"
+    "https://api.heigit.org/openelevationservice/v0/line"
 )
 
 

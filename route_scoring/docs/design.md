@@ -68,8 +68,11 @@ SRTM 고도는 시설물 경사로·보도 턱을 판정할 정밀도가 아니�
 Filter에 사용하지 않는다.
 
 50m 경사 구간의 최대 상승·하강 값을 사용하고, 상승은 하강보다 큰 기본 감점을
-부여한다. 기존 `walkingDuration`, `stairLevel`, `mobilityAid` 중 가장 취약한 값으로
-민감도를 정하며 총 감점은 3점으로 제한한다.
+부여한다. 사용자 경사 민감도는 Backend에서 전달하는 `slopeLevel`을 우선 사용해
+`AVAILABLE → LOW`, `SLIGHTLY_DIFFICULT → MEDIUM`, `DIFFICULT → HIGH`로 매핑한다.
+구버전 요청처럼 `slopeLevel`이 없을 때만 기존 `walkingDuration`, `stairLevel`,
+`mobilityAid` 중 가장 취약한 값을 fallback으로 사용한다. 총 경사 감점은 3점으로
+제한한다.
 
 한 후보의 일부 WALK 구간만 분석되면 성공 구간만으로 감점할 경우 후보 사이의
 비교가 불공정해질 수 있다. 따라서 `SUCCESS`에서만 감점하고 `PARTIAL`, `FAILED`,

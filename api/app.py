@@ -22,7 +22,10 @@ from api.slope_enrichment import (
 )
 from route_scoring.scoring import score_routes
 from route_scoring.scoring.weather_penalty import get_weather_environment
+from api.chatbot import run_chatbot
 
+import logging
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -74,5 +77,42 @@ def score_route_candidates(request: Any = Body(...)):
                     "message": "route scoring failed",
                     "retryable": True,
                 },
+            },
+        )
+
+@app.post("/chat")
+def chat(request: dict = Body(...)):
+    try:
+        message = request.get("message")
+
+        if not message:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_MESSAGE",
+                        "message": "message is required",
+                    }
+                },
+            )
+
+        result = run_chatbot(
+            stt_text=message,
+            state=request.get("state", {}),
+        )
+
+        return result
+
+    except Exception:
+        LOGGER.exception("chat processing failed")
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "CHAT_ERROR",
+                    "message": "chat processing failed",
+                    "retryable": True,
+                }
             },
         )
