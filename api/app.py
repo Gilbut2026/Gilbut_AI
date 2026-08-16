@@ -1,8 +1,8 @@
 """FastAPI entrypoint for Gilbut route accessibility scoring.
 
-Backend sends user context and route candidates. The API layer queries current
-weather, creates the internal ``environment`` field, and delegates scoring to
-``route_scoring``.
+Backend sends user context, departureDateTime, and route candidates. The API
+layer queries the forecast for the requested departure time, creates the
+internal ``environment`` field, and delegates scoring to ``route_scoring``.
 """
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -47,16 +47,19 @@ def health():
 def score_route_candidates(request: Any = Body(...)):
     """Score Backend route candidates using the shared request/response contract.
 
-    Backend provides userContext and candidates, including walkSegments when
-    available. FastAPI adds AI-owned weather information internally before
-    delegating the policy logic to ``route_scoring.scoring.score_routes``.
+    Backend provides departureDateTime, userContext and candidates, including
+    walkSegments when available. FastAPI resolves the forecast for that
+    departure time before delegating the policy logic to
+    ``route_scoring.scoring.score_routes``.
     """
     if not isinstance(request, dict):
         return score_routes(request)
 
     try:
         scoring_request = deepcopy(request)
-        scoring_request["environment"] = get_weather_environment()
+        scoring_request["environment"] = get_weather_environment(
+            request.get("departureDateTime")
+        )
         try:
             enrich_routes_with_slopes(scoring_request)
         except Exception:
