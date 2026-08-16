@@ -6,8 +6,17 @@
 
 import math
 
-REQUIRED_METRICS = ("totalWalkTimeSec", "totalWalkDistanceM", "transferCount")
-INTEGER_METRICS = ("transferCount",)
+# Backend AiRouteScoringRequest.Metrics에서 네 값 모두 전달된다.
+# totalTimeSec는 near-tie ranking에 사용하므로 필수 입력으로 검증한다.
+REQUIRED_METRICS = (
+    "totalTimeSec",
+    "totalWalkTimeSec",
+    "totalWalkDistanceM",
+    "transferCount",
+)
+
+# Backend DTO의 totalTimeSec / transferCount 타입은 java.lang.Integer다.
+INTEGER_METRICS = ("totalTimeSec", "transferCount")
 
 
 def validate(request):
