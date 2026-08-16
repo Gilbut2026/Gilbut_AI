@@ -31,6 +31,14 @@ def _item(date, time, category, value):
     }
 
 
+def _snapshot(date, time, tmp="10", pcp="강수없음", pty="0"):
+    return [
+        _item(date, time, "TMP", tmp),
+        _item(date, time, "PCP", pcp),
+        _item(date, time, "PTY", pty),
+    ]
+
+
 @pytest.mark.parametrize(
     "text, expected",
     [
@@ -109,14 +117,10 @@ def test_kma_request_uses_yyyymmdd_hhmm(monkeypatch):
 
 
 def test_select_forecast_closest_to_departure_time():
-    items = [
-        _item("20260817", "1000", "TMP", "28"),
-        _item("20260817", "1000", "PCP", "강수없음"),
-        _item("20260817", "1000", "PTY", "0"),
-        _item("20260817", "1100", "TMP", "31"),
-        _item("20260817", "1100", "PCP", "20.0mm"),
-        _item("20260817", "1100", "PTY", "1"),
-    ]
+    items = (
+        _snapshot("20260817", "1000", "28", "강수없음", "0")
+        + _snapshot("20260817", "1100", "31", "20.0mm", "1")
+    )
 
     assert select_forecast_for_departure(
         items,
@@ -129,14 +133,10 @@ def test_select_forecast_closest_to_departure_time():
 
 
 def test_exact_halfway_prefers_earlier_forecast():
-    items = [
-        _item("20260817", "1000", "TMP", "28"),
-        _item("20260817", "1000", "PCP", "강수없음"),
-        _item("20260817", "1000", "PTY", "0"),
-        _item("20260817", "1100", "TMP", "29"),
-        _item("20260817", "1100", "PCP", "강수없음"),
-        _item("20260817", "1100", "PTY", "0"),
-    ]
+    items = (
+        _snapshot("20260817", "1000", "28")
+        + _snapshot("20260817", "1100", "29")
+    )
 
     selected = select_forecast_for_departure(
         items,
@@ -145,15 +145,58 @@ def test_exact_halfway_prefers_earlier_forecast():
     assert selected["TMP"] == "28"
 
 
-def test_does_not_substitute_forecast_more_than_30_minutes_away():
-    items = [
-        _item("20260817", "1000", "TMP", "28"),
-        _item("20260817", "1000", "PCP", "강수없음"),
-        _item("20260817", "1000", "PTY", "0"),
-    ]
+def test_standard_hourly_period_does_not_substitute_more_than_30_minutes():
+    items = (
+        _snapshot("20260817", "1000", "28")
+        + _snapshot("20260817", "1100", "29")
+    )
 
     with pytest.raises(RuntimeError):
-        select_forecast_for_departure(items, "2026-08-17T10:31:00")
+        select_forecast_for_departure(items, "2026-08-17T09:29:00")
+
+
+def test_extended_three_hour_period_accepts_nearest_forecast_within_90_minutes():
+    items = (
+        _snapshot("20260819", "2300", "20", "강수없음", "0")
+        + _snapshot("20260820", "0000", "20", "1", "1")
+        + _snapshot("20260820", "0300", "19", "3", "1")
+        + _snapshot("20260820", "0600", "18", "0", "0")
+    )
+
+    selected = select_forecast_for_departure(
+        items,
+        "2026-08-20T01:00:00",
+    )
+
+    assert selected["TMP"] == "20"
+    assert selected["PCP"] == "1"
+    assert selected["_qualitative_pcp"] is True
+
+
+def test_extended_three_hour_halfway_prefers_earlier_forecast():
+    items = (
+        _snapshot("20260820", "0000", "20", "1", "1")
+        + _snapshot("20260820", "0300", "19", "3", "1")
+        + _snapshot("20260820", "0600", "18", "0", "0")
+    )
+
+    selected = select_forecast_for_departure(
+        items,
+        "2026-08-20T01:30:00",
+    )
+
+    assert selected["TMP"] == "20"
+    assert selected["PCP"] == "1"
+
+
+def test_irregular_two_hour_gap_is_not_mistaken_for_extended_period():
+    items = (
+        _snapshot("20260817", "1000", "20")
+        + _snapshot("20260817", "1200", "21")
+    )
+
+    with pytest.raises(RuntimeError):
+        select_forecast_for_departure(items, "2026-08-17T11:00:00")
 
 
 @pytest.mark.parametrize(
@@ -175,6 +218,48 @@ def test_does_not_substitute_forecast_more_than_30_minutes_away():
 )
 def test_new_forecast_inputs_preserve_existing_weather_outputs(forecast, expected):
     assert classify_weather(forecast) == expected
+
+
+@pytest.mark.parametrize(
+    "pcp_code, expected",
+    [
+        ("0", "CLEAR"),
+        ("1", "RAIN"),
+        ("2", "RAIN"),
+        ("3", "HEAVY_RAIN"),
+    ],
+)
+def test_extended_qualitative_pcp_codes_preserve_rain_thresholds(pcp_code, expected):
+    forecast = {
+        "TMP": "20",
+        "PCP": pcp_code,
+        "PTY": "0" if pcp_code == "0" else "1",
+        "_qualitative_pcp": True,
+    }
+    assert classify_weather(forecast) == expected
+
+
+def test_extended_qualitative_pcp_code_2_preserves_existing_heavy_snow_threshold():
+    assert classify_weather(
+        {
+            "TMP": "-2",
+            "PCP": "2",
+            "PTY": "3",
+            "_qualitative_pcp": True,
+        }
+    ) == "HEAVY_SNOW"
+
+
+def test_extended_qualitative_pcp_rejects_unknown_code():
+    with pytest.raises(RuntimeError):
+        classify_weather(
+            {
+                "TMP": "20",
+                "PCP": "4",
+                "PTY": "1",
+                "_qualitative_pcp": True,
+            }
+        )
 
 
 def test_unexpected_pty_code_is_not_silently_treated_as_clear():
