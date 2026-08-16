@@ -6,7 +6,7 @@
     result = score_routes(request)
 """
 
-from . import drt, filters, obstacles, policy, score, slope, validation
+from . import drt, filters, obstacles, policy, ranking, score, slope, validation
 
 
 def score_routes(request):
@@ -65,20 +65,25 @@ def _partition(candidates, user):
 
 
 def _rank(passed, user, weather):
-    """점수를 계산하고 순위를 매긴다.
+    """기존 Score Function으로 점수를 계산한 뒤 ranking 정책을 적용한다.
 
-    Returns:
-        (정렬된 항목 목록, 응답용 결과 목록)
+    ``score.calculate``의 계산식은 그대로 유지한다. totalTimeSec는 점수에
+    더하지 않고, 접근성 점수가 near-tie인 후보의 정렬에만 사용한다.
     """
     entries = [
         {
             **entry,
-            "breakdown": score.calculate(entry["candidate"], entry["obstacles"], user, weather),
+            "breakdown": score.calculate(
+                entry["candidate"],
+                entry["obstacles"],
+                user,
+                weather,
+            ),
         }
         for entry in passed
     ]
 
-    entries.sort(key=_sort_key)
+    entries = ranking.order(entries)
 
     results = [
         {
@@ -101,28 +106,8 @@ def _slope_summary(candidate):
     return summary if isinstance(summary, dict) else slope.not_requested_summary()
 
 
-def _sort_key(entry):
-    """점수 내림차순. 동점이면 장애물 → 도보시간 → 환승 → 원본 순서.
-
-    장애물을 첫 번째 기준으로 둔 것은, 이 서비스의 기준이 "빠른 길"이 아니라
-    "편한 길"이기 때문이다.
-    """
-    metrics = entry["candidate"]["metrics"]
-    return (
-        -entry["breakdown"].total,
-        entry["obstacles"].weight,
-        metrics["totalWalkTimeSec"],
-        metrics["transferCount"],
-        entry["candidate"].get("providerRank", float("inf")),
-    )
-
-
 def _resolve_weather(environment):
-    """날씨 조회에 실패했으면 페널티를 적용하지 않는다.
-
-    조회 실패를 "날씨가 나쁘다"로도 "좋다"로도 단정하지 않기 위해,
-    페널티가 없는 CLEAR로 처리한다.
-    """
+    """날씨 조회에 실패했으면 페널티를 적용하지 않는다."""
     if environment.get("weatherLookupStatus") not in (None, "SUCCESS"):
         return "CLEAR"
     return environment.get("weatherCondition", "CLEAR")
