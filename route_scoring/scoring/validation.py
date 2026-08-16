@@ -6,8 +6,19 @@
 
 import math
 
-REQUIRED_METRICS = ("totalWalkTimeSec", "totalWalkDistanceM", "transferCount")
-INTEGER_METRICS = ("transferCount",)
+# BE AiRouteScoringRequest.Metrics의 현재 계약과 동일하다.
+REQUIRED_METRICS = (
+    "totalTimeSec",
+    "totalWalkTimeSec",
+    "totalWalkDistanceM",
+    "transferCount",
+)
+INTEGER_METRICS = (
+    "totalTimeSec",
+    "totalWalkTimeSec",
+    "totalWalkDistanceM",
+    "transferCount",
+)
 
 
 def validate(request):
@@ -54,7 +65,7 @@ def _validate_metrics(candidate, route_id):
 
         value = metrics[field]
 
-        # bool은 int의 하위 타입이라 별도로 걸러야 한다
+        # bool은 int의 하위 타입이라 별도로 걸러야 한다.
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return f"{field} must be a number: {route_id}"
 
