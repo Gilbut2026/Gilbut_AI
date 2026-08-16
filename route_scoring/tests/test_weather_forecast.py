@@ -13,7 +13,6 @@ from scoring.weather_penalty import (
     KST,
     VALID_WEATHER_CONDITIONS,
     _build_environment,
-    _is_qualitative_extended_period,
     _request_forecast_items,
     classify_weather,
     get_forecast_base_candidates,
@@ -59,10 +58,7 @@ def test_date_only_is_rejected():
 
 def test_latest_forecast_base_uses_current_available_run():
     now = datetime(2026, 8, 16, 20, 20, tzinfo=KST)
-
-    candidates = get_forecast_base_candidates(now)
-
-    assert candidates[:3] == [
+    assert get_forecast_base_candidates(now)[:3] == [
         datetime(2026, 8, 16, 20, 0, tzinfo=KST),
         datetime(2026, 8, 16, 17, 0, tzinfo=KST),
         datetime(2026, 8, 16, 14, 0, tzinfo=KST),
@@ -120,7 +116,6 @@ def test_select_forecast_closest_to_departure_time():
         _item("20260817", "1100", "TMP", "31"),
         _item("20260817", "1100", "PCP", "20.0mm"),
         _item("20260817", "1100", "PTY", "1"),
-        _item("20260817", "1100", "SNO", "적설없음"),
     ]
 
     assert select_forecast_for_departure(
@@ -130,7 +125,6 @@ def test_select_forecast_closest_to_departure_time():
         "TMP": "31",
         "PCP": "20.0mm",
         "PTY": "1",
-        "SNO": "적설없음",
     }
 
 
@@ -148,18 +142,31 @@ def test_exact_halfway_prefers_earlier_forecast():
         items,
         "2026-08-17T10:30:00",
     )
-
     assert selected["TMP"] == "28"
+
+
+def test_does_not_substitute_forecast_more_than_30_minutes_away():
+    items = [
+        _item("20260817", "1000", "TMP", "28"),
+        _item("20260817", "1000", "PCP", "강수없음"),
+        _item("20260817", "1000", "PTY", "0"),
+    ]
+
+    with pytest.raises(RuntimeError):
+        select_forecast_for_departure(items, "2026-08-17T10:31:00")
 
 
 @pytest.mark.parametrize(
     "forecast, expected",
     [
         ({"TMP": "25", "PCP": "강수없음", "PTY": "0"}, "CLEAR"),
+        ({"TMP": "25", "PCP": "1.0mm 미만", "PTY": "1"}, "RAIN"),
         ({"TMP": "25", "PCP": "2.0mm", "PTY": "1"}, "RAIN"),
         ({"TMP": "25", "PCP": "15.0mm", "PTY": "1"}, "HEAVY_RAIN"),
+        ({"TMP": "25", "PCP": "30.0~50.0mm", "PTY": "1"}, "HEAVY_RAIN"),
         ({"TMP": "-2", "PCP": "1.0mm", "PTY": "3"}, "SNOW"),
         ({"TMP": "-2", "PCP": "3.0mm", "PTY": "3"}, "HEAVY_SNOW"),
+        ({"TMP": "25", "PCP": "1.0mm", "PTY": "4"}, "RAIN"),
         ({"TMP": "30", "PCP": "강수없음", "PTY": "0"}, "HEAT"),
         ({"TMP": "35", "PCP": "강수없음", "PTY": "0"}, "SEVERE_HEAT"),
         ({"TMP": "-5", "PCP": "강수없음", "PTY": "0"}, "COLD"),
@@ -170,46 +177,9 @@ def test_new_forecast_inputs_preserve_existing_weather_outputs(forecast, expecte
     assert classify_weather(forecast) == expected
 
 
-def test_qualitative_extended_heavy_rain_code():
-    assert classify_weather(
-        {
-            "TMP": "10",
-            "PCP": "3",
-            "PTY": "1",
-            "SNO": "0",
-            "_qualitative": True,
-        }
-    ) == "HEAVY_RAIN"
-
-
-def test_qualitative_extended_snow_uses_sno_code():
-    assert classify_weather(
-        {
-            "TMP": "-3",
-            "PCP": "2",
-            "PTY": "3",
-            "SNO": "2",
-            "_qualitative": True,
-        }
-    ) == "HEAVY_SNOW"
-
-
-def test_extended_period_boundary_matches_kma_release_rule():
-    base_1400 = datetime(2026, 8, 16, 14, 0, tzinfo=KST)
-    base_2000 = datetime(2026, 8, 16, 20, 0, tzinfo=KST)
-
-    assert _is_qualitative_extended_period(
-        base_1400,
-        datetime(2026, 8, 19, 3, 0, tzinfo=KST),
-    )
-    assert not _is_qualitative_extended_period(
-        base_2000,
-        datetime(2026, 8, 19, 3, 0, tzinfo=KST),
-    )
-    assert _is_qualitative_extended_period(
-        base_2000,
-        datetime(2026, 8, 20, 3, 0, tzinfo=KST),
-    )
+def test_unexpected_pty_code_is_not_silently_treated_as_clear():
+    with pytest.raises(RuntimeError):
+        classify_weather({"TMP": "25", "PCP": "강수없음", "PTY": "9"})
 
 
 def test_weather_condition_contract_matches_score_function():
