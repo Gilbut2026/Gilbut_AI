@@ -9,6 +9,10 @@ offset이 없는 값은 서비스 기준 시간대인 KST로 해석한다.
     RN1(강수량)    -> PCP(1시간 강수량)
     PTY(강수형태)  -> PTY(강수형태)
 
+기상청 단기예보의 일반 구간은 1시간 간격이지만 연장기간은 3시간 간격이며,
+연장기간 PCP는 실제 mm/h가 아닌 정성 코드값(0~3)을 사용한다. 실제 반환 시각
+간격이 3시간인 구간을 감지해 출발시각 선택 허용범위와 PCP 해석을 전환한다.
+
 단기예보 API는 SNO(1시간 신적설)도 제공하지만, 기존 HEAVY_SNOW 기준은
 강수량(mm/h) 기준이므로 새로운 적설량 임계값을 임의로 만들지 않고 PCP를 사용한다.
 
@@ -52,9 +56,12 @@ KST = ZoneInfo("Asia/Seoul")
 FORECAST_BASE_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)
 FORECAST_BASE_CANDIDATE_COUNT = 3
 
-# 단기예보는 1시간 간격이다. 분 단위 departureDateTime은 가장 가까운
-# 정시 예보를 사용하되 30분을 넘겨 다른 시각을 대신 쓰지 않는다.
-MAX_FORECAST_TIME_DELTA = timedelta(minutes=30)
+# 일반 구간은 1시간, 연장기간은 3시간 간격이다. departureDateTime은 가장
+# 가까운 예보를 사용하므로 각각 간격의 절반(30분/90분)까지 허용한다.
+STANDARD_FORECAST_INTERVAL = timedelta(hours=1)
+EXTENDED_FORECAST_INTERVAL = timedelta(hours=3)
+STANDARD_MAX_FORECAST_TIME_DELTA = timedelta(minutes=30)
+EXTENDED_MAX_FORECAST_TIME_DELTA = timedelta(minutes=90)
 
 HEAVY_RAIN_MM_PER_HOUR = 15.0
 HEAVY_SNOW_PRECIP_MM_PER_HOUR = 3.0
@@ -73,6 +80,16 @@ RAIN_PTY_CODES = frozenset({"1", "4"})
 MIXED_PTY_CODES = frozenset({"2"})
 SNOW_PTY_CODES = frozenset({"3"})
 VALID_PTY_CODES = frozenset({NO_PRECIP_PTY_CODE}) | RAIN_PTY_CODES | MIXED_PTY_CODES | SNOW_PTY_CODES
+
+# 연장기간 PCP 정성 코드: 0=강수없음, 1=<3mm/h, 2=3~15mm/h, 3=>=15mm/h.
+# 기존 임계값 분류와 호환되도록 실제 강수량을 복원하지 않고 분류 가능한
+# 대표 하한값으로 변환한다. 코드 1은 강수가 있음을 보존하기 위한 양수 sentinel이다.
+QUALITATIVE_PCP_CLASSIFICATION_MM = {
+    "0": 0.0,
+    "1": 0.1,
+    "2": 3.0,
+    "3": 15.0,
+}
 
 # 동시에 여러 위험이 잡혀도 weatherCondition은 하나만 제공한다.
 CONDITION_PRIORITY = {
@@ -111,7 +128,6 @@ def parse_departure_datetime(value: str | datetime) -> datetime:
         if "T" not in text and " " not in text:
             raise ValueError("departureDateTime must include date and time")
 
-        # 방어적으로 offset-aware ISO 문자열도 허용한다.
         if text.endswith("Z"):
             text = text[:-1] + "+00:00"
 
@@ -124,7 +140,6 @@ def parse_departure_datetime(value: str | datetime) -> datetime:
     else:
         raise ValueError("departureDateTime is required")
 
-    # Backend java.time.LocalDateTime은 offset이 없으므로 KST로 해석한다.
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=KST)
 
@@ -144,11 +159,7 @@ def get_forecast_base_candidates(
     now: datetime | None = None,
     count: int = FORECAST_BASE_CANDIDATE_COUNT,
 ) -> list[datetime]:
-    """현재 시점에서 이용 가능한 최신 단기예보 발표 시각 후보를 반환한다.
-
-    최신 발표본이 API에 아직 반영되지 않았을 수 있으므로 직전 발표본도
-    함께 반환한다. 미래 발표본은 선택하지 않는다.
-    """
+    """현재 시점에서 이용 가능한 최신 단기예보 발표 시각 후보를 반환한다."""
     if count <= 0:
         return []
 
@@ -195,12 +206,31 @@ def _parse_required_number(value: Any, field: str) -> float:
     return float(match.group())
 
 
-def _parse_pcp(value: Any) -> float:
-    """PCP 값을 기존 RN1 분류기와 같은 mm/h 숫자로 변환한다.
+def _parse_qualitative_pcp(value: Any) -> float:
+    """연장기간 PCP 정성 코드(0~3)를 기존 강수량 임계 분류용 값으로 변환한다."""
+    if value is None or isinstance(value, bool):
+        raise RuntimeError("기상청 연장기간 PCP 예보값이 없습니다")
 
-    실제 API의 ``강수없음``, ``1.0mm 미만``, ``30.0~50.0mm`` 같은 문자열도
-    분류 임계값 비교가 가능하도록 첫 수치를 사용한다.
-    """
+    try:
+        numeric = float(str(value).strip())
+    except ValueError as error:
+        raise RuntimeError("기상청 연장기간 PCP 코드 형식이 예상과 다릅니다") from error
+
+    if not numeric.is_integer():
+        raise RuntimeError("기상청 연장기간 PCP 코드는 정수 0~3이어야 합니다")
+
+    code = str(int(numeric))
+    if code not in QUALITATIVE_PCP_CLASSIFICATION_MM:
+        raise RuntimeError(f"지원하지 않는 기상청 연장기간 PCP 코드입니다: {code}")
+
+    return QUALITATIVE_PCP_CLASSIFICATION_MM[code]
+
+
+def _parse_pcp(value: Any, *, qualitative: bool = False) -> float:
+    """PCP를 기존 RN1 분류기와 호환되는 강수량 값으로 변환한다."""
+    if qualitative:
+        return _parse_qualitative_pcp(value)
+
     if value is None or isinstance(value, bool):
         raise RuntimeError("기상청 PCP 예보값이 없습니다")
 
@@ -263,7 +293,6 @@ def classify_precipitation(
             else "RAIN"
         )
 
-    # 기존 로직과 동일하게 PTY=0이어도 PCP에 강수량이 있으면 비로 취급한다.
     if rain_amount > 0:
         return (
             "HEAVY_RAIN"
@@ -289,7 +318,10 @@ def classify_temperature(temperature: float) -> str | None:
 def classify_weather(forecast: dict[str, Any]) -> str:
     """TMP/PCP/PTY 한 시점 예보를 기존 weatherCondition으로 축약한다."""
     temperature = _parse_required_number(forecast.get("TMP"), "TMP")
-    rain_amount = _parse_pcp(forecast.get("PCP"))
+    rain_amount = _parse_pcp(
+        forecast.get("PCP"),
+        qualitative=bool(forecast.get("_qualitative_pcp")),
+    )
     pty = forecast.get("PTY")
 
     conditions = [
@@ -323,7 +355,7 @@ def _service_key() -> str:
 
 
 def _request_forecast_items(base_datetime: datetime) -> list[dict[str, Any]]:
-    """지정된 발표본의 수원시 단기예보 항목을 조회한다."""
+    """지정된 발표본의 수원시 기상청 단기예보 항목을 조회한다."""
     base = _as_kst(base_datetime)
 
     params = {
@@ -377,6 +409,28 @@ def _forecast_datetime(item: dict[str, Any]) -> datetime:
         raise RuntimeError("기상청 API 예보 시각 형식이 예상과 다릅니다") from error
 
 
+def _forecast_interval_for_timestamp(
+    forecast_times: list[datetime],
+    selected_at: datetime,
+) -> timedelta:
+    """실제 반환 시각의 인접 간격으로 일반(1h)/연장(3h) 구간을 판별한다."""
+    try:
+        index = forecast_times.index(selected_at)
+    except ValueError as error:
+        raise RuntimeError("선택된 예보 시각을 찾을 수 없습니다") from error
+
+    adjacent: list[timedelta] = []
+    if index > 0:
+        adjacent.append(selected_at - forecast_times[index - 1])
+    if index + 1 < len(forecast_times):
+        adjacent.append(forecast_times[index + 1] - selected_at)
+
+    if EXTENDED_FORECAST_INTERVAL in adjacent:
+        return EXTENDED_FORECAST_INTERVAL
+
+    return STANDARD_FORECAST_INTERVAL
+
+
 def _select_forecast_snapshot(
     items: list[dict[str, Any]],
     departure_datetime: str | datetime,
@@ -404,18 +458,30 @@ def _select_forecast_snapshot(
     if not complete:
         raise RuntimeError("기상청 API 필수 예보값(TMP/PCP/PTY)이 없습니다")
 
+    forecast_times = sorted(complete)
     selected_at = min(
-        complete,
+        forecast_times,
         key=lambda forecast_at: (
             abs(forecast_at - target),
             forecast_at,
         ),
     )
 
-    if abs(selected_at - target) > MAX_FORECAST_TIME_DELTA:
+    interval = _forecast_interval_for_timestamp(forecast_times, selected_at)
+    max_delta = (
+        EXTENDED_MAX_FORECAST_TIME_DELTA
+        if interval == EXTENDED_FORECAST_INTERVAL
+        else STANDARD_MAX_FORECAST_TIME_DELTA
+    )
+
+    if abs(selected_at - target) > max_delta:
         raise RuntimeError("departureDateTime이 단기예보 제공 범위를 벗어났습니다")
 
-    return selected_at, complete[selected_at]
+    forecast = dict(complete[selected_at])
+    if interval == EXTENDED_FORECAST_INTERVAL:
+        forecast["_qualitative_pcp"] = True
+
+    return selected_at, forecast
 
 
 def select_forecast_for_departure(
